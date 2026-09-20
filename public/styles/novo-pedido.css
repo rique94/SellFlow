@@ -1,0 +1,140 @@
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+
+main {
+    background-color: rgb(222, 222, 222);
+
+    height: 100vh;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+header div div {
+    display: flex;
+
+    margin-bottom: 0px;
+    align-items: center;
+}
+#header {
+    text-align: left;
+    margin: 30px;
+}
+#header p {
+    margin-left: 70px;    
+}
+header div div a {
+    margin: 10px;
+
+    text-decoration: none;
+    color: black;
+
+    font-size: 20pt;
+
+    transition: 0.3s;
+    padding: 10px;
+
+    border-radius: 10px;
+}
+header div div a:hover {
+    transition: 0.3s;
+
+    border-radius: 10px;
+    transform: scale(1.09);
+
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.233);
+
+    background-color: white;
+}
+header div div h2 {
+    margin: 10px;
+}
+header button {
+    border: none;
+    background-color: blueviolet;
+    padding: 10px;
+    border-radius: 10px;
+    color: white;
+    font-size: 15pt;
+    margin-right: 60px;
+}
+
+form {
+    margin: 30px;
+}
+h3 {
+    text-align: left;
+    font-size: 25pt;
+}
+.container-form {
+    background-color: white;
+    border-radius: 20px;
+
+    padding: 20px;
+
+    margin: 20px 0px 20px 0px;
+}
+.f_linha {
+    display: flex;
+    justify-content: space-between;
+
+
+    margin: 20px 100px;
+    gap: 80px;
+
+    font-size: 15pt;
+}
+.f_input, #f_input {
+    display: flex;
+    align-items: center;
+}
+.f_input {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    flex: 1;
+}
+#f_complemento {
+    width: 700px;
+}
+label, input {
+    display: block;
+}
+input {
+    width: 250px;
+    height: 30px;
+
+    padding: 10px;
+}
+#p_qtd_pecas, #p_valor_total {
+    display: block;
+}
+#qtd_pecas {
+    margin: 20px;
+    background-color: rgb(222, 222, 222);
+    border-radius: 10px;
+    padding: 10px;
+}
+.button_peca {
+    font-size: 20pt;
+    background-color: rgb(222, 222, 222);
+    border-radius: 10px;
+    padding: 10px;
+    border: 1px solid grey;
+}
+#container_linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    margin: 0px 100px 0px 100px;
+    font-size: 20pt;
+}

@@ -1,0 +1,258 @@
+* {
+    padding: 0px;
+    margin: 0px;
+    font-family: Arial, Helvetica, sans-serif;
+    box-sizing: border-box;
+}
+body {
+    text-align: center;
+    background-color: rgb(233, 233, 233);
+
+    display: flex;
+}
+.sidebar {
+    background-color: rgb(17, 17, 58);
+    color: white;
+
+    /*Fixando na esquerda*/
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    height: 100vh;
+}
+.sidebar div {
+    padding: 20px;
+    padding-left: 40px;
+    background-color: rgb(10, 10, 32);
+    border-bottom: 1px solid rgb(50, 50, 75);
+
+    text-align: left;
+
+    
+}
+.sidebar p {
+    color: rgb(167, 167, 167);
+    margin-top: 10px;
+}
+nav {
+    text-align: left;
+
+}
+nav a {
+    display: block;
+
+    text-decoration: none;
+
+    color: white;
+
+    margin: 25px;
+    padding: 10px;
+
+    font-size: 15pt;
+
+    border-radius: 10px;
+
+    transition: 0.3s;
+}
+nav a:hover {
+    transition: 0.3s;
+
+    transform: scale(1.1);
+
+    background-color: rgb(34, 34, 107);
+}
+#selecionado {
+    border-radius: 10px;
+    background-color: rgb(34, 34, 107);
+}
+#selecionado:hover {
+    transition: 0.3s;
+
+    transform: scale(1.1);
+
+    background-color: rgb(44, 44, 136);
+}
+
+main {
+    margin-left: 260px;
+    width: calc(100% - 260px);
+}
+#title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+#title h2 {
+    text-align: left;
+    margin: 40px;
+    font-size: 25pt;
+}
+#title a {
+    margin: 30px;
+    padding: 10px;
+    
+    text-decoration: none;
+
+    color: white;
+    background-color: blueviolet;
+
+    border-radius: 10px;
+
+    font-size: 15pt;
+
+    transition: 0.3s;
+}
+#title a:hover {
+    transition: 0.3s;
+
+    transform: scale(1.1);
+
+    box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.426);
+}
+
+#cards-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.cards-dashboard {
+    background-color: white;
+    border-radius: 10px;
+    margin: 10px;
+
+    padding: 30px;
+
+    display: flex;
+}
+.content-card-dashboard {
+    align-items: center;
+    display: flex;
+}
+.content-card-dashboard h3 {
+    font-size: 11pt;
+}
+.num-card-dashboard {
+    font-size: 25pt;
+    margin: 10px;
+}
+.img-card-dashboard {
+    padding: 30px;
+
+    font-size: 20pt;
+}
+#total-pedidos .img-card-dashboard {
+    background-color: blueviolet;
+
+    border-radius: 20px;
+}
+#retirar-pedidos .img-card-dashboard {
+    background-color: rgb(255, 221, 0);
+
+    border-radius: 20px;
+}
+#pagar-pedidos .img-card-dashboard {
+    background-color: rgb(180, 1, 1);
+
+    border-radius: 20px;
+}
+#finalizados-pedidos .img-card-dashboard {
+    background-color: rgb(0, 80, 0);
+
+    border-radius: 20px;
+}
+
+hr {
+    margin: 10px;
+    color: rgb(194, 194, 194);
+}
+
+.container-cards {
+    display: flex;
+    justify-content: space-between;
+}
+.cards {
+    margin: 10px;
+
+    padding: 20px;
+    background-color: white;
+    border-radius: 20px;
+
+    height: 250px;
+    width: 300px;
+}
+.card-linha-1 {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.num-pedido {
+    font-size: 20pt;
+    font-weight: lighter;
+}
+.data-hora-pedido {
+    color: rgb(63, 63, 63);
+}
+
+.card-linha-2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    margin-bottom: 30px;
+}
+
+.dados-pessoais-pedido {
+    text-align: left;
+}
+.telefone-pedido {
+    color: rgb(84, 84, 84);
+}
+
+.status-pedido {
+    background-color: rgba(255, 255, 0, 0.095);
+    backdrop-filter: blur(10px);
+
+    border-radius: 10px;
+
+    border: 1px solid rgb(199, 176, 0);
+
+    padding: 10px;
+}
+
+.card-linha-3 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+.qtd-produtos {
+    color: rgb(84, 84, 84);
+}
+
+.ver-detalhes-a {
+    display: block;
+
+    text-decoration: none;
+    color: black;
+
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.186);
+
+    width: 100%;
+
+    background-color: rgb(239, 239, 239);
+
+    transition: 0.3s;
+}
+.ver-detalhes-a:hover {
+    transition: 0.3s;
+
+    transform: scale(1.07);
+
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.151);
+}

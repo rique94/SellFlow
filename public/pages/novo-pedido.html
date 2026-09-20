@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-br">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Novo pedido</title>
+
+        <link rel="stylesheet" href="../styles/novo-pedido.css" />
+        <link rel="stylesheet" href="../styles/style.css" />
+    </head>
+    <body>
+        <div class="sidebar">
+            <div>
+                <h1>RB Outlet</h1>
+                <p>Novo pedido</p>
+            </div>
+            <nav>
+                <a href="../index.html">📄 Pedidos</a>
+                <a id="selecionado">➕ Novo pedido</a>
+            </nav>
+        </div>
+        <main>
+            <header>
+                <div id="header">
+                    <div>
+                        <a href="../index.html">←</a>
+                        <h2>Novo pedido</h2>
+                    </div>
+                    <p>Preencha os dados abaixo para criar um novo pedido.</p>
+                </div>
+                <div>
+                    <button type="submit">Salvar pedido</button>
+                </div>
+            </header>
+
+            <form action="" method="post">
+                <div class="container-form">
+                    <h3>Dados do cliente</h3>
+                    <div id="container_linhas">
+                        <div class="f_linha">
+                            <div class="f_input">
+                                <label for="f_nome">Nome Completo: </label>
+                                <input
+                                    type="text"
+                                    name="nome"
+                                    id="f_nome"
+                                    placeholder="Ex: Pedro silva"
+                                />
+                            </div>
+                            <div class="f_input">
+                                <label for="f_telefone">Telefone: </label>
+                                <input
+                                    type="tel"
+                                    name="telefone"
+                                    id="f_telefone"
+                                    maxlength="15"
+                                    placeholder="(11) 999999999"
+                                />
+                            </div>
+                        </div>
+                        <div class="f_linha">
+                            <div class="f_input">
+                                <label for="f_endereco">Endereço: </label>
+                                <input
+                                    type="text"
+                                    name="endereco"
+                                    id="f_endereco"
+                                    placeholder="Al. Rio negro n 1050"
+                                />
+                            </div>
+                            <div class="f_input">
+                                <label for="f_cep">CEP: </label>
+                                <input
+                                    type="text"
+                                    name="cep"
+                                    id="f_cep"
+                                    maxlength="8"
+                                    placeholder="09999000 - sem traços"
+                                />
+                            </div>
+                        </div>
+                        <div class="f_linha">
+                            <div class="f_input">
+                                <label for="f_complemento"
+                                    >Complemento: (opicional)</label
+                                >
+                                <input
+                                    type="text"
+                                    name="complemento"
+                                    id="f_complemento"
+                                    placeholder="Na entrada do valet do hotel"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="container-form">
+                    <h3>Dados do pedido</h3>
+                    <div class="container_linhas">
+                        <div id="pecas" class="container_linhas">
+                            <div class="f_linha">
+                                <div class="f_input">
+                                    <label for="f_peca">Peça: </label>
+                                    <input
+                                        type="text"
+                                        name="peca"
+                                        id="f_peca"
+                                        placeholder="Descrição da peça"
+                                    />
+                                    <label for="f_qtd_peca">Quantidade: </label>
+                                    <input
+                                        type="number"
+                                        name="qtd_peca"
+                                        id="f_qtd_peca"
+                                    />
+                                    <label for="f_valor">Valor da peça R$: </label>
+                                    <input
+                                        type="number"
+                                        name="valor_peca"
+                                        id="f_valor"
+                                        placeholder="com ponto"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div id="container_linha">
+                            <p id="p_qtd_pecas">
+                                Peças: <span id="qtd_pecas">1</span>
+                            </p>
+                            <p id="p_valor_total">
+                                Valor Total: R$
+                                <span id="valor_total">0,00</span>
+                            </p>
+                            <button class="button_peca" onclick="addPeca()" type="button">Adicionar mais peça</button>
+                            <button class="button_peca" onclick="deletePeca()" type="reset">Deletar peça</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </main>
+    </body>
+    <script src="../scripts/novo-pedido.js"></script>
+</html>
