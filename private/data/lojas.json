@@ -1,0 +1,23 @@
+[
+    {
+        "login": "rioNegro",
+        "usrName": "Rio Negro",
+        "pwd": "rionegro123",
+        "tel": "11939470746",
+        "id": 1
+    },
+    {
+        "login": "centroComercial",
+        "usrName": "Centro Comercial",
+        "pwd": "centro123",
+        "tel": "11999999999",
+        "id" : 2
+    },
+    {
+        "login": "condeComercial",
+        "usrName": "Conde Comercial",
+        "pwd": "conde123",
+        "tel": "11988888888",
+        "id" : 3
+    }
+]

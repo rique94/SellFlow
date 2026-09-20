@@ -80,7 +80,8 @@ h3 {
 
     padding: 20px;
 
-    margin: 20px 0px 20px 0px;
+    margin-top: 20px;
+    margin-bottom: 20px;
 }
 .f_linha {
     display: flex;
@@ -137,4 +138,13 @@ input {
 
     margin: 0px 100px 0px 100px;
     font-size: 20pt;
+}
+
+#footer {
+    height: 50px;
+    width: 100%;
+}
+
+button {
+    cursor: pointer;
 }

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-br">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Pedidos</title>
+        <link rel="stylesheet" href="../styles/style.css" />
+    </head>
+    <body>
+        <header>
+            <div class="sidebar">
+                <div>
+                    <h1>RB Outlet</h1>
+                    <p id="nome_loja"></p>
+                </div>
+                <nav>
+                    <a id="selecionado">📄 Pedidos</a>
+                    <a href="http://localhost:3000/novo-pedido">➕ Novo pedido</a>
+                </nav>
+            </div>
+        </header>
+        <main>
+            <div id="title">
+                <h2>Pedidos</h2>
+                <a href="http://localhost:3000/novo-pedido">+ Novo pedido</a>
+            </div>
+            <div id="cards-container">
+                <div class="cards-dashboard" id="total-pedidos">
+                    <div class="img-card-dashboard">
+                        <p>🎁</p>
+                    </div>
+                    <div class="content-card-dashboard">
+                        <h3>Total de Pedidos</h3>
+                        <p class="num-card-dashboard" id="num-total-pedidos">0</p>
+                    </div>
+                </div>
+                <div class="cards-dashboard" id="retirar-pedidos">
+                    <div class="img-card-dashboard">
+                        <p>🎀</p>
+                    </div>
+                    <div class="content-card-dashboard">
+                        <h3>Pedidos a retirar</h3>
+                        <p class="num-card-dashboard" id="num-pedidos-retirar">0</p>
+                    </div>
+                </div>
+                <div class="cards-dashboard" id="pagar-pedidos">
+                    <div class="img-card-dashboard">
+                        <p>💸</p>
+                    </div>
+                    <div class="content-card-dashboard">
+                        <h3>Pedidos a pagar</h3>
+                        <p class="num-card-dashboard" id="num-pedidos-pagar">0</p>
+                    </div>
+                </div>
+                <div class="cards-dashboard" id="finalizados-pedidos">
+                    <div class="img-card-dashboard">
+                        <p>✅</p>
+                    </div>
+                    <div class="content-card-dashboard">
+                        <h3>Pedidos finalizados</h3>
+                        <p class="num-card-dashboard" id="num-pedidos-finalizados">0</p>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <div class="container-cards">
+                <div class="cards">
+                    <div class="cards-content">
+                        <div class="card-linha-1">
+                            <h3 class="num-pedido">#001</h3>
+                            <p class="data-hora-pedido"><span class="data-pedido">29/08/2026</span> ● <span class="hora-pedido">16:30</span></p>
+                        </div>
+                        <div class="card-linha-2">
+                            <div class="dados-pessoais-pedido">
+                                <h3 class="nome-pedido">Ana Paula</h3>
+                                <p class="telefone-pedido">(11) 939470746</p>
+                            </div>
+                            <p class="status-pedido">🟡 Retirar</p>
+                        </div>
+                        <div class="card-linha-3">
+                            <p class="qtd-produtos">3 produtos</p>
+                            <p class="valor-pedido">R$ 189,90</p>
+                        </div>
+                    </div>
+                    <div class="card-content-detalhes">
+                        <a href="#" class="ver-detalhes-a">Ver detalhes ➡️</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </body>
+    <script src="../scripts/dashboard.js"></script>
+</html>

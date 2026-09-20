@@ -1,14 +1,111 @@
 //importando o express
-const express = require('express');
+const express = require("express");
 const app = express();
 
 //importando o path
-const path = require('path');
+const path = require("path");
 
-app.use(express.static(path.join(__dirname, '../public')));
+//importando os pedidos
+const centroPedidos = require("./data/centroComercial/pedidos.json");
+const rioPedidos = require("./data/rioNegro/pedidos.json");
+const condePedidos = require("./data/conde/pedidos.json");
 
+//importando o json com as lojas
+const storesJson = require("./data/lojas.json");
+//colocando as lojas em um array
+const stores = storesJson;
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "../public")));
+
+//rota de pedidos
+app.get("/dashboard/:id", (req, res) => {
+    res.sendFile(path.join(__dirname, "../public/pages/dashboard.html"));
+});
+
+//rota para criar um novo pedido
 app.get("/novo-pedido", (req, res) => {
     res.sendFile(path.join(__dirname, "../public/pages/novo-pedido.html"));
+});
+
+//rota para verificar o login
+app.post("/api/login", (req, res) => {
+    console.log(req.body);
+
+    //pegando os dados
+    const usr = req.body.usr;
+    const pwd = req.body.pwd;
+
+    //verificando os dados
+    for (let i = 0; i < stores.length; i++) {
+        if (
+            (usr == stores[i].login || usr == stores[i].tel) 
+            &&
+            pwd == stores[i].pwd
+        ) {
+            console.log("Entrada bem sucedida!");
+            return res.status(200).json(stores[i].id);
+        }
+    }
+    console.log("Alguma credencial está errada!");
+    res.sendStatus(401);
+});
+
+//rota pra pegar todos os dados da loja
+app.get("/api/takeData/:id", (req, res) => {
+    const id = req.params.id;
+    let usrData;
+    let usrPedidos = [];
+    let json;
+
+    //pegando os dados da loja
+    for (let i = 0; i < stores.length; i++) {
+        if (stores[i].id == id) {
+            usrData = stores[i];
+
+            //procurando os pedidos da rio negro
+            if (id == 1) {
+                usrPedidos = rioPedidos;
+
+                // botando tudo dentro de um objeto
+                json = {
+                    usr: usrData,
+                    pedidos: usrPedidos,
+                };
+
+                //enviando o objeto
+                console.log("enviando dados da Rio Negro");
+                return res.status(200).json(json);
+            }
+            else if (id == 2) {
+                usrPedidos = centroPedidos;
+
+                // botando tudo dentro de um objeto
+                json = {
+                    usr: usrData,
+                    pedidos: usrPedidos,
+                };
+
+                //enviando o objeto
+                console.log("enviando dados do centro comercial");
+                return res.status(200).json(json);
+            }
+            else if (id == 3 ) {
+                usrPedidos = condePedidos;
+
+                // botando tudo dentro de um objeto
+                json = {
+                    usr: usrData,
+                    pedidos: usrPedidos,
+                };
+
+                //enviando o objeto
+                console.log("enviando dados do Conde");
+                return res.status(200).json(json);
+            }
+        }
+    }
+    res.sendStatus(401);
 });
 
 //Rodando o servidor
