@@ -155,3 +155,24 @@ button {
     border-radius: 10px;
     box-shadow: 0px 0px 10px 5px rgba(255, 0, 0, 0.323);
 }
+
+.sucesso {
+    border: 1px solid green;
+    background-color: rgb(165, 255, 165);
+    border-radius: 10px;
+    box-shadow: 0px 0px 10px 5px rgba(0, 255, 0, 0.323);
+
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.erro {
+    border: 1px solid red;
+    background-color: rgb(255, 165, 165);
+    border-radius: 10px;
+    box-shadow: 0px 0px 10px 5px rgba(255, 0, 0, 0.323);
+
+    margin: 30px;
+    padding: 30px;
+}

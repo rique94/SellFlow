@@ -1,3 +1,5 @@
+//importando o fs
+const fs = require("fs");
 //importando o express
 const express = require("express");
 const app = express();
@@ -12,6 +14,7 @@ const condePedidos = require("./data/conde/pedidos.json");
 
 //importando o json com as lojas
 const storesJson = require("./data/lojas.json");
+const { json } = require("stream/consumers");
 //colocando as lojas em um array
 const stores = storesJson;
 
@@ -39,7 +42,7 @@ app.post("/api/login", (req, res) => {
     //verificando os dados
     for (let i = 0; i < stores.length; i++) {
         if (
-            (usr == stores[i].login || usr == stores[i].tel) 
+            (usr == stores[i].login || usr == stores[i].tel)
             &&
             pwd == stores[i].pwd
         ) {
@@ -90,7 +93,7 @@ app.get("/api/takeData/:id", (req, res) => {
                 console.log("enviando dados do centro comercial");
                 return res.status(200).json(json);
             }
-            else if (id == 3 ) {
+            else if (id == 3) {
                 usrPedidos = condePedidos;
 
                 // botando tudo dentro de um objeto
@@ -112,9 +115,65 @@ app.get("/api/takeData/:id", (req, res) => {
 app.post("/api/enviar-pedido", (req, res) => {
     console.log("Recebendo um novo pedido!!!");
 
+    const id = req.body.loja;
+
     console.log(req.body);
 
-    res.status(200);
+    //pegando o arquivo conforme a loja
+    if (id == 1) {
+        const jsonCaminho = path.join(__dirname, "./data/rioNegro/pedidos.json"); 
+
+        //transformando em array
+        let jsonContentString = JSON.parse(fs.readFileSync(jsonCaminho, 'utf8'));
+        //botando o novo pedido
+        jsonContentString.push(req.body);
+        //salvando em json novamente
+        const jsonContent = JSON.stringify(jsonContentString);
+
+        //sobreescrevendo o arquivo antigo ja com o novo
+        fs.writeFileSync(jsonCaminho, jsonContent, 'utf8');
+
+        console.log("Novo pedido registrado com sucesso!!!");
+
+        res.sendStatus(200);
+    }
+    else if (id == 2) {
+        const jsonCaminho = path.join(__dirname, "./data/centroComercial/pedidos.json"); 
+
+        //transformando em array
+        let jsonContentString = JSON.parse(fs.readFileSync(jsonCaminho, 'utf8'));
+        //botando o novo pedido
+        jsonContentString.push(req.body);
+        //salvando em json novamente
+        const jsonContent = JSON.stringify(jsonContentString);
+
+        //sobreescrevendo o arquivo antigo ja com o novo
+        fs.writeFileSync(jsonCaminho, jsonContent, 'utf8');
+
+        console.log("Novo pedido registrado com sucesso!!!");
+
+        res.sendStatus(200);
+    }
+    else if (id == 3) {
+        const jsonCaminho = path.join(__dirname, "./data/conde/pedidos.json"); 
+
+        //transformando em array
+        let jsonContentString = JSON.parse(fs.readFileSync(jsonCaminho, 'utf8'));
+        //botando o novo pedido
+        jsonContentString.push(req.body);
+        //salvando em json novamente
+        const jsonContent = JSON.stringify(jsonContentString);
+
+        //sobreescrevendo o arquivo antigo ja com o novo
+        fs.writeFileSync(jsonCaminho, jsonContent, 'utf8');
+
+        console.log("Novo pedido registrado com sucesso!!!");
+
+        res.sendStatus(200);
+    }
+    else {
+        res.sendStatus(401);
+    }
 })
 
 //Rodando o servidor

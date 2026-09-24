@@ -4,6 +4,8 @@ let qtdPecas = document.getElementById("qtd_pecas");
 let numQtdPecas = 1;
 let listaPedidos = [];
 
+let mensagem = document.getElementById("footer");
+
 const id = window.location.pathname.split("/").pop();
 
 let links = document.querySelectorAll(
@@ -168,7 +170,18 @@ async function enviarDados() {
                 },
                 body: JSON.stringify(pedido)
             });
-            console.log(response)
+            
+            console.log(response.status);
+
+            if (response.status == 200) {
+                mensagem.innerHTML = "Pedido enviado com sucesso!";
+                mensagem.className = "sucesso";
+            }
+            else {
+                mensagem.innerHTML = "Erro ao enviar o pedido!";
+                mensagem.className = "erro";
+            }
+
         } else {
             return;
         }
