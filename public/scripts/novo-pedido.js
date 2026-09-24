@@ -1,7 +1,32 @@
 const telefone = document.getElementById("f_telefone");
 let pecas = document.getElementById("pecas");
 let qtdPecas = document.getElementById("qtd_pecas");
-let numQtdPecas = 1
+let numQtdPecas = 1;
+let listaPedidos = [];
+
+const id = window.location.pathname.split("/").pop();
+
+let links = document.querySelectorAll(
+    'a[href="http://localhost:3000/dashboard"]',
+);
+links.forEach((link) => {
+    link.href = `http://localhost:3000/dashboard/${id}`;
+});
+
+async function pegarDados() {
+    let nomeLoja = document.getElementById("nome_loja");
+
+    const response = await fetch(`http://localhost:3000/api/takeData/${id}`);
+
+    const data = await response.json();
+
+    console.log(data);
+
+    nomeLoja.innerHTML = data.usr.usrName;
+
+    return data;
+}
+const user = pegarDados();
 
 telefone.addEventListener("input", function () {
     let valor = telefone.value.replace(/\D/g, "");
@@ -22,10 +47,12 @@ telefone.addEventListener("input", function () {
 });
 
 function addPeca() {
-    numQtdPecas += 1
-    qtdPecas.innerHTML = numQtdPecas
+    numQtdPecas += 1;
+    qtdPecas.innerHTML = numQtdPecas;
     console.log("adicionando peças!");
-    pecas.insertAdjacentHTML("beforeend", `<div class="f_linha">
+    pecas.insertAdjacentHTML(
+        "beforeend",
+        `<div class="f_linha">
                             <div class="f_input">
                                 <label for="f_peca${numQtdPecas}">Peça: </label>
                                 <input
@@ -50,13 +77,14 @@ function addPeca() {
                                     placeholder="com ponto"
                                 />
                             </div>
-                        </div>`);
+                        </div>`,
+    );
 }
 
 function deletePeca() {
     numQtdPecas = 1;
-    qtdPecas.innerHTML = "1"
-    console.log("adicionando peças!");
+    qtdPecas.innerHTML = "1";
+    console.log("removendo peças!");
     pecas.innerHTML = ``;
     pecas.innerHTML = `<div class="f_linha">
                             <div class="f_input">
@@ -84,4 +112,122 @@ function deletePeca() {
                                 />
                             </div>
                         </div>`;
+}
+
+// fazendo o novo pedido
+
+async function enviarDados() {
+    //verificando os dados
+    if (verifyValuesClient()) {
+        //pegando os dados do cliente
+        const nomeCli = document.getElementById("f_nome").value;
+        const telCli = document.getElementById("f_telefone").value;
+        const enderecoCli = document.getElementById("f_endereco").value;
+        const cepCli = document.getElementById("f_cep").value;
+        const complementoCli = document.getElementById("f_complemento").value;
+
+        //fazendo o objeto cliente
+        const cliente = {
+            nome: nomeCli,
+            telefone: telCli,
+            endereco: enderecoCli,
+            cep: cepCli,
+            complemento: complementoCli,
+        };
+
+        if (verifyValuesOrder()) {
+            //pegando os dados do pedido
+            for (let i = 1; i <= numQtdPecas; i++) {
+                let descPeca = document.getElementById(`f_peca${i}`).value;
+                let qtdPeca = document.getElementById(`f_qtd_peca${i}`).value;
+                let valorPeca = document.getElementById(`f_valor${i}`).value;
+
+                //fazendo o objeto peça para o objeto pedido
+                const peca = {
+                    desc_peca: descPeca,
+                    qtd_peca: qtdPeca,
+                    valor_peca: valorPeca,
+                };
+                //colocando na lista da peça
+                listaPedidos.push(peca);
+            }
+
+            //fazendo o objeto pedido
+            const pedido = {
+                cliente,
+                listaPedidos,
+                loja: id
+            };
+
+            console.log(pedido)
+            //enviando pro servidor via fetch
+            const response = await fetch("http://localhost:3000/api/enviar-pedido", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(pedido)
+            });
+            console.log(response)
+        } else {
+            return;
+        }
+    } else {
+        return;
+    }
+}
+
+function verifyValuesClient() {
+    //pegando os dados do cliente
+    const nomeCli = document.getElementById("f_nome");
+    const telCli = document.getElementById("f_telefone");
+
+    if (nomeCli.value == "") {
+        nomeCli.className = "alerta";
+        window.alert("Falta o nome do Cliente!!!");
+        return false;
+    } else if (telCli.value == "") {
+        telCli.className = "alerta";
+        window.alert("Falta o telefone do Cliente!!!");
+        return false;
+    } else {
+        nomeCli.className = "";
+        telCli.className = "";
+        return true;
+    }
+}
+function verifyValuesOrder() {
+    for (let i = 1; i <= numQtdPecas; i++) {
+        let descPeca = document.getElementById(`f_peca${i}`);
+        let qtdPeca = document.getElementById(`f_qtd_peca${i}`);
+        let valorPeca = document.getElementById(`f_valor${i}`);
+
+        if (descPeca.value == "") {
+            descPeca.className = "alerta";
+            window.alert(
+                "Faltou a descrição de uma Peça!!!\nJá verifique os outros dados para não receber outro alerta.",
+            );
+            return false;
+        }
+        if (qtdPeca.value == "") {
+            descPeca.className = "alerta";
+            window.alert(
+                "Faltou a quantidade de uma Peça!!!\nJá verifique os outros dados para não receber outro alerta.",
+            );
+            return false;
+        }
+        if (valorPeca.value == "") {
+            descPeca.className = "alerta";
+            window.alert(
+                "Faltou o valor de uma Peça!!!\nJá verifique os outros dados para não receber outro alerta.",
+            );
+            return false;
+        } else {
+            valorPeca.className = "";
+            descPeca.className = "";
+            qtdPeca.className = "";
+
+            return true;
+        }
+    }
 }

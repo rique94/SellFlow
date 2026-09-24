@@ -1,5 +1,10 @@
 const id = window.location.pathname.split("/").pop();
 
+let links = document.querySelectorAll('a[href="http://localhost:3000/novo-pedido"]');
+links.forEach((link => {
+    link.href = `http://localhost:3000/novo-pedido/${id}`;
+}));
+
 async function pegarDados() {
     let nomeLoja = document.getElementById("nome_loja");
 
@@ -10,5 +15,8 @@ async function pegarDados() {
     console.log(data);
 
     nomeLoja.innerHTML = data.usr.usrName;
+
+    return data;
 }
-pegarDados();
+const user = pegarDados();
+

@@ -15,7 +15,7 @@
                 <p>Novo pedido</p>
             </div>
             <nav>
-                <a href="http://localhost:3000/dasboard">📄 Pedidos</a>
+                <a href="http://localhost:3000/dashboard">📄 Pedidos</a>
                 <a id="selecionado">➕ Novo pedido</a>
             </nav>
         </div>
@@ -24,12 +24,12 @@
                 <div id="header">
                     <div>
                         <a href="http://localhost:3000/dashboard">←</a>
-                        <h2>Novo pedido</h2>
+                        <h2 id="nome_loja">Novo pedido</h2>
                     </div>
                     <p>Preencha os dados abaixo para criar um novo pedido.</p>
                 </div>
                 <div>
-                    <button type="submit">Salvar pedido</button>
+                    <button type="submit" onclick="enviarDados()">Salvar pedido</button>
                 </div>
             </header>
 
@@ -44,7 +44,7 @@
                                     type="text"
                                     name="nome"
                                     id="f_nome"
-                                    placeholder="Ex: Pedro silva"
+                                    placeholder="Ex: Pedro silva (Obrigatório)"
                                 />
                             </div>
                             <div class="f_input">
@@ -54,7 +54,7 @@
                                     name="telefone"
                                     id="f_telefone"
                                     maxlength="15"
-                                    placeholder="(11) 999999999"
+                                    placeholder="(11) 999999999 (Obrigatório)"
                                 />
                             </div>
                         </div>
@@ -75,7 +75,7 @@
                                     name="cep"
                                     id="f_cep"
                                     maxlength="8"
-                                    placeholder="09999000 - sem traços"
+                                    placeholder="09999000 - sem traços (Opicional)"
                                 />
                             </div>
                         </div>
@@ -88,7 +88,7 @@
                                     type="text"
                                     name="complemento"
                                     id="f_complemento"
-                                    placeholder="Na entrada do valet do hotel"
+                                    placeholder="Na entrada do valet do hotel (Opicional)"
                                 />
                             </div>
                         </div>

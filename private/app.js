@@ -24,7 +24,7 @@ app.get("/dashboard/:id", (req, res) => {
 });
 
 //rota para criar um novo pedido
-app.get("/novo-pedido", (req, res) => {
+app.get("/novo-pedido/:id", (req, res) => {
     res.sendFile(path.join(__dirname, "../public/pages/novo-pedido.html"));
 });
 
@@ -107,6 +107,15 @@ app.get("/api/takeData/:id", (req, res) => {
     }
     res.sendStatus(401);
 });
+
+//rota de enviar pedido
+app.post("/api/enviar-pedido", (req, res) => {
+    console.log("Recebendo um novo pedido!!!");
+
+    console.log(req.body);
+
+    res.status(200);
+})
 
 //Rodando o servidor
 app.listen(3000, () => {
