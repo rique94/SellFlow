@@ -1,3 +1,1 @@
-[
-    
-]
+[{"cliente":{"nome":"Ana Paula Nunes Garcias dos Santos","telefone":"(11) 96869-2086","endereco":"","cep":"","complemento":""},"listaPedidos":[{"desc_peca":"Camiseta","qtd_peca":"2","valor_peca":"49.99"}],"status":"🔴 pagar","loja":"1"},{"cliente":{"nome":"Ademir ","telefone":"(92) 37642-4358","endereco":"","cep":"","complemento":""},"listaPedidos":[{"desc_peca":"Calça","qtd_peca":"1","valor_peca":"119.99"}],"status":"🔴 pagar","loja":"1"}]

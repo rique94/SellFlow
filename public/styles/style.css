@@ -169,7 +169,7 @@ hr {
 
 .container-cards {
     display: flex;
-    justify-content: space-between;
+    gap: 20px;
 }
 .cards {
     margin: 10px;

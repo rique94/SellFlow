@@ -7,16 +7,27 @@ const app = express();
 //importando o path
 const path = require("path");
 
-//importando os pedidos
-const centroPedidos = require("./data/centroComercial/pedidos.json");
-const rioPedidos = require("./data/rioNegro/pedidos.json");
-const condePedidos = require("./data/conde/pedidos.json");
-
 //importando o json com as lojas
 const storesJson = require("./data/lojas.json");
 const { json } = require("stream/consumers");
 //colocando as lojas em um array
 const stores = storesJson;
+
+const caminhosPedidos = {
+    1: path.join(__dirname, "./data/rioNegro/pedidos.json"),
+    2: path.join(__dirname, "./data/centroComercial/pedidos.json"),
+    3: path.join(__dirname, "./data/conde/pedidos.json"),
+};
+
+function lerPedidos(id) {
+    const caminho = caminhosPedidos[id];
+
+    if (!caminho) {
+        return null;
+    }
+
+    return JSON.parse(fs.readFileSync(caminho, "utf8"));
+}
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
@@ -68,7 +79,7 @@ app.get("/api/takeData/:id", (req, res) => {
 
             //procurando os pedidos da rio negro
             if (id == 1) {
-                usrPedidos = rioPedidos;
+                usrPedidos = lerPedidos(id);
 
                 // botando tudo dentro de um objeto
                 json = {
@@ -81,7 +92,7 @@ app.get("/api/takeData/:id", (req, res) => {
                 return res.status(200).json(json);
             }
             else if (id == 2) {
-                usrPedidos = centroPedidos;
+                usrPedidos = lerPedidos(id);
 
                 // botando tudo dentro de um objeto
                 json = {
@@ -94,7 +105,7 @@ app.get("/api/takeData/:id", (req, res) => {
                 return res.status(200).json(json);
             }
             else if (id == 3) {
-                usrPedidos = condePedidos;
+                usrPedidos = lerPedidos(id);
 
                 // botando tudo dentro de um objeto
                 json = {

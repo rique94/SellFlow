@@ -158,6 +158,7 @@ async function enviarDados() {
             const pedido = {
                 cliente,
                 listaPedidos,
+                status: "🔴 pagar",
                 loja: id
             };
 
