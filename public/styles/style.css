@@ -225,13 +225,64 @@ hr {
     color: rgb(84, 84, 84);
 }
 
-.status-pedido {
-    background-color: rgba(255, 255, 0, 0.095);
+/*Classes de status dos pedidos*/
+.status-retirar-local {
+    background-color: rgba(200, 0, 255, 0.095);
     backdrop-filter: blur(10px);
 
     border-radius: 10px;
 
-    border: 1px solid rgb(199, 176, 0);
+    border: 1px solid rgb(200, 0, 255);
+
+    padding: 10px;
+}
+.status-finalizado {
+    background-color: rgba(60, 255, 0, 0.095);
+    backdrop-filter: blur(10px);
+
+    border-radius: 10px;
+
+    border: 1px solid rgb(60, 255, 0);
+
+    padding: 10px;
+}
+.status-retirar {
+    background-color: rgba(255, 251, 0, 0.095);
+    backdrop-filter: blur(10px);
+
+    border-radius: 10px;
+
+    border: 1px solid rgb(255, 251, 0);
+
+    padding: 10px;
+}
+.status-pagar {
+    background-color: rgba(255, 0, 0, 0.095);
+    backdrop-filter: blur(10px);
+
+    border-radius: 10px;
+
+    border: 1px solid rgb(255, 0, 0);
+
+    padding: 10px;
+}
+.status-despachar {
+    background-color: rgba(0, 17, 255, 0.095);
+    backdrop-filter: blur(10px);
+
+    border-radius: 10px;
+
+    border: 1px solid rgb(0, 17, 255);
+
+    padding: 10px;
+}
+.status-despachado {
+    background-color: rgba(0, 225, 255, 0.095);
+    backdrop-filter: blur(10px);
+
+    border-radius: 10px;
+
+    border: 1px solid rgb(0, 225, 255);
 
     padding: 10px;
 }
