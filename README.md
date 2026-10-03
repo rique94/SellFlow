@@ -23,11 +23,12 @@ Novas funcionalidades e melhorias estão sendo adicionadas ao projeto conforme s
 
 ## Funcionalidades
 
-* [ ] Gerenciamento de pedidos
+* [ ] 
+
 * [x] Criação de novos pedidos
 * [x] Visualização de pedidos
 * [ ] API REST com Express
-* [ ] Sistema de cadastro de lojas
+* [x] Sistema de cadastro de lojas
 * [ ] Autenticação de lojas
 * [x] Gerenciamento de usuários
 * [x] Banco de dados
@@ -37,13 +38,42 @@ Novas funcionalidades e melhorias estão sendo adicionadas ao projeto conforme s
 
 ```text
 SellFlow/
-├── Backend/
-│   ├── ...
-│   └── ...
+├── private/
+│   ├── data
+│   │   ├── centroComercial
+│   │   │   └── pedidos.json
+│   │   │
+│   │   ├── conde
+│   │   │   └── pedidos.json
+│   │   │
+│   │   ├── centroComercial
+│   │   │   └── pedidos.json
+│   │   │
+│   │   └── lojas.json
+│   │
+│   └── app.js
 │
-├── Frontend/
-│   ├── ...
-│   └── ...
+├── public/
+│   ├── pages/
+│   │   ├── dashboard.html
+│   │   │
+│   │   └── novo-pedido.html
+│   │
+│   ├── scipts/
+│   │   ├── dashboard.js
+│   │   │ 
+│   │   ├── log-in.js
+│   │   │
+│   │   └── novo-pedido.js
+│   │
+│   ├── styles/
+│   │   ├── log-in.css
+│   │   │ 
+│   │   ├── novo-pedido.css
+│   │   │
+│   │   └── style.css
+│   │
+│   └── index.html
 │
 ├── package.json
 └── README.md
