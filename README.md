@@ -93,16 +93,16 @@ Durante o desenvolvimento, dados fictícios podem ser utilizados para testes.
 
 ## Roadmap
 
-* [ ] Estrutura inicial do sistema
-* [ ] API inicial
+* [x] Estrutura inicial do sistema
+* [x] API inicial
 * [ ] Gerenciamento básico de pedidos
 * [ ] Sistema de lojas
-* [ ] Cadastro e login
+* [x] login
 * [ ] Autenticação e autorização
-* [ ] Banco de dados
+* [x] Banco de dados
 * [ ] Melhorias na interface
 * [ ] Deploy
-* [ ] Suporte completo a múltiplas lojas
+* [x] Suporte completo a múltiplas lojas
 
 ## Licença
 
