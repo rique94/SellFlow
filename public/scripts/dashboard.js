@@ -53,6 +53,8 @@ async function pegarDados() {
         const hora = pedido.hora;
         const idPedido = pedido.id;
 
+        const classStatus = verifyStatus(pedido);
+
         linhaCard.innerHTML += `<div class="cards">
                     <div class="cards-content">
                         <div class="card-linha-1">
@@ -64,7 +66,7 @@ async function pegarDados() {
                                 <h3 class="nome-pedido">${firstNomeCli[0]}</h3>
                                 <p class="telefone-pedido">${telCli}</p>
                             </div>
-                            <p class="status-pedido">${status}</p>
+                            <p class="${classStatus}">${status}</p>
                         </div>
                         <div class="card-linha-3">
                             <p class="qtd-produtos">${qtdPecas} produto(s)</p>
@@ -83,7 +85,7 @@ async function pegarDados() {
 
     //pedidos a retirar
     let qtdPedidosRetirar = 0;
-    data.pedidos.forEach(pedido => {
+    data.pedidos.forEach((pedido) => {
         if (pedido.status == "🟡Retirar" || pedido.status == "🟣Pagar local") {
             qtdPedidosRetirar += 1;
         }
@@ -92,7 +94,7 @@ async function pegarDados() {
 
     //pedidos a pagar
     let qtdPedidosPagar = 0;
-    data.pedidos.forEach(pedido => {
+    data.pedidos.forEach((pedido) => {
         if (pedido.status == "🟣Pagar local" || pedido.status == "🔴Pagar") {
             qtdPedidosPagar += 1;
         }
@@ -101,11 +103,32 @@ async function pegarDados() {
 
     //pedidos finalizados
     let qtdPedidosFinalizados = 0;
-    data.pedidos.forEach(pedido => {
-        if (pedido.status == "🟢Finalizado") {
+    data.pedidos.forEach((pedido) => {
+        if (pedido.status == "✅Finalizado") {
             qtdPedidosFinalizados += 1;
         }
     });
     finalizadoPedidos.innerHTML = qtdPedidosFinalizados;
 }
 pegarDados();
+
+function verifyStatus(pedido) {
+    if (pedido.status == "✅Finalizado") {
+        return "status-finalizado";
+    }
+    if (pedido.status == "🟣Pagar local") {
+        return "status-retirar-local";
+    }
+    if (pedido.status == "🟡Retirar") {
+        return "status-retirar";
+    }
+    if (pedido.status == "🔴Pagar") {
+        return "status-pagar";
+    }
+    if (pedido.status == "🔵Despachar") {
+        return "status-despachar";
+    }
+    if (pedido.status == "🟦Despachado") {
+        return "status-despachado"
+    }
+}
