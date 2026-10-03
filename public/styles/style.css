@@ -168,18 +168,33 @@ hr {
 }
 
 .container-cards {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 20px;
+    padding: 0 20px;
 }
 .cards {
-    margin: 10px;
+    margin-left: 0px;
 
     padding: 20px;
     background-color: white;
     border-radius: 20px;
 
     height: 250px;
-    width: 300px;
+    width: 100%;
+    min-width: 0;
+}
+
+@media (max-width: 1100px) {
+    .container-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 650px) {
+    .container-cards {
+        grid-template-columns: 1fr;
+    }
 }
 .card-linha-1 {
     width: 100%;

@@ -26,7 +26,7 @@
                         <a href="http://localhost:3000/dashboard">←</a>
                         <h2 id="nome_loja">Novo pedido</h2>
                     </div>
-                    <p class="mensagem">Preencha os dados abaixo para criar um novo pedido.</p>
+                    <p id="mensagem1">Preencha os dados abaixo para criar um novo pedido.</p>
                 </div>
                 <div>
                     <button type="submit" onclick="enviarDados()">Salvar pedido</button>
@@ -95,7 +95,16 @@
                     </div>
                 </div>
                 <div class="container-form">
-                    <h3>Dados do pedido</h3>
+                    <div class="header-box">
+                        <h3>Dados do pedido</h3>
+                        <select name="status" id="f_status">
+                            <option value="🔴Pagar">🔴Pagar</option>
+                            <option value="🟡Retirar">🟡Retirar</option>
+                            <option value="🟢Finalizado">🟢Finalizado</option>
+                            <option value="🟣Pagar local">🟣Pagar local</option>
+                            <option value="🔵Enviar correios">🔵correios</option>
+                        </select>
+                    </div>
                     <div class="container_linhas">
                         <div id="pecas" class="container_linhas">
                             <div class="f_linha">
@@ -132,7 +141,7 @@
                                 <span id="valor_total">0,00</span>
                             </p>
                             <button class="button_peca" onclick="addPeca()" type="button">Adicionar mais peça</button>
-                            <button class="button_peca" onclick="deletePeca()" type="reset">Deletar peça</button>
+                            <button class="button_peca" onclick="deletePeca()" type="button">Deletar peça</button>
                         </div>
                     </div>
                 </div>

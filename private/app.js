@@ -44,7 +44,6 @@ app.get("/novo-pedido/:id", (req, res) => {
 
 //rota para verificar o login
 app.post("/api/login", (req, res) => {
-    console.log(req.body);
 
     //pegando os dados
     const usr = req.body.usr;
@@ -127,64 +126,27 @@ app.post("/api/enviar-pedido", (req, res) => {
     console.log("Recebendo um novo pedido!!!");
 
     const id = req.body.loja;
-
     console.log(req.body);
 
-    //pegando o arquivo conforme a loja
-    if (id == 1) {
-        const jsonCaminho = path.join(__dirname, "./data/rioNegro/pedidos.json"); 
-
-        //transformando em array
-        let jsonContentString = JSON.parse(fs.readFileSync(jsonCaminho, 'utf8'));
-        //botando o novo pedido
-        jsonContentString.push(req.body);
-        //salvando em json novamente
-        const jsonContent = JSON.stringify(jsonContentString);
-
-        //sobreescrevendo o arquivo antigo ja com o novo
-        fs.writeFileSync(jsonCaminho, jsonContent, 'utf8');
-
-        console.log("Novo pedido registrado com sucesso!!!");
-
-        res.sendStatus(200);
-    }
-    else if (id == 2) {
-        const jsonCaminho = path.join(__dirname, "./data/centroComercial/pedidos.json"); 
-
-        //transformando em array
-        let jsonContentString = JSON.parse(fs.readFileSync(jsonCaminho, 'utf8'));
-        //botando o novo pedido
-        jsonContentString.push(req.body);
-        //salvando em json novamente
-        const jsonContent = JSON.stringify(jsonContentString);
-
-        //sobreescrevendo o arquivo antigo ja com o novo
-        fs.writeFileSync(jsonCaminho, jsonContent, 'utf8');
-
-        console.log("Novo pedido registrado com sucesso!!!");
-
-        res.sendStatus(200);
-    }
-    else if (id == 3) {
-        const jsonCaminho = path.join(__dirname, "./data/conde/pedidos.json"); 
-
-        //transformando em array
-        let jsonContentString = JSON.parse(fs.readFileSync(jsonCaminho, 'utf8'));
-        //botando o novo pedido
-        jsonContentString.push(req.body);
-        //salvando em json novamente
-        const jsonContent = JSON.stringify(jsonContentString);
-
-        //sobreescrevendo o arquivo antigo ja com o novo
-        fs.writeFileSync(jsonCaminho, jsonContent, 'utf8');
-
-        console.log("Novo pedido registrado com sucesso!!!");
-
-        res.sendStatus(200);
-    }
-    else {
+    const jsonCaminho = caminhosPedidos[id];
+    if (!jsonCaminho) {
         res.sendStatus(401);
+        return;
     }
+
+    const pedidos = JSON.parse(fs.readFileSync(jsonCaminho, "utf8"));
+    const ultimoPedidoComId = [...pedidos].reverse().find((pedido) => {
+        const pedidoId = Number(pedido.id);
+        return Number.isInteger(pedidoId) && pedidoId >= 1 && pedidoId <= 999;
+    });
+    const ultimoId = ultimoPedidoComId ? Number(ultimoPedidoComId.id) : pedidos.length;
+    const novoId = (ultimoId % 999) + 1;
+
+    pedidos.push({ ...req.body, id: novoId });
+    fs.writeFileSync(jsonCaminho, JSON.stringify(pedidos), "utf8");
+
+    console.log("Novo pedido registrado com sucesso!!!");
+    res.sendStatus(200);
 })
 
 //Rodando o servidor

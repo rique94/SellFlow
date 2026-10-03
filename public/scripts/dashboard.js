@@ -1,4 +1,9 @@
 //tudo isso aqui vai executar assim que entrar na página
+//pegando o numero de pedidos totaise etc
+let totalPedidos = document.getElementById("num-total-pedidos");
+let retirarPedidos = document.getElementById("num-pedidos-retirar");
+let pagarPedidos = document.getElementById("num-pedidos-pagar");
+let finalizadoPedidos = document.getElementById("num-pedidos-finalizados");
 //pegando o id da loja
 const id = window.location.pathname.split("/").pop();
 
@@ -44,12 +49,15 @@ async function pegarDados() {
                 total + Number(item.qtd_peca) * Number(item.valor_peca),
             0,
         );
+        const dia = pedido.data;
+        const hora = pedido.hora;
+        const idPedido = pedido.id;
 
         linhaCard.innerHTML += `<div class="cards">
                     <div class="cards-content">
                         <div class="card-linha-1">
-                            <h3 class="num-pedido">#001</h3>
-                            <p class="data-hora-pedido"><span class="data-pedido">29/08/2026</span> ● <span class="hora-pedido">16:30</span></p>
+                            <h3 class="num-pedido"># ${idPedido}</h3>
+                            <p class="data-hora-pedido"><span class="data-pedido">${dia}</span> ● <span class="hora-pedido">${hora}</span></p>
                         </div>
                         <div class="card-linha-2" >
                             <div class="dados-pessoais-pedido">
@@ -68,5 +76,36 @@ async function pegarDados() {
                     </div>
                 </div>`;
     }
+
+    //mostrando os numeros totais
+    //pedidos totais
+    totalPedidos.innerHTML = data.pedidos.length;
+
+    //pedidos a retirar
+    let qtdPedidosRetirar = 0;
+    data.pedidos.forEach(pedido => {
+        if (pedido.status == "🟡Retirar" || pedido.status == "🟣Pagar local") {
+            qtdPedidosRetirar += 1;
+        }
+    });
+    retirarPedidos.innerHTML = qtdPedidosRetirar;
+
+    //pedidos a pagar
+    let qtdPedidosPagar = 0;
+    data.pedidos.forEach(pedido => {
+        if (pedido.status == "🟣Pagar local" || pedido.status == "🔴Pagar") {
+            qtdPedidosPagar += 1;
+        }
+    });
+    pagarPedidos.innerHTML = qtdPedidosPagar;
+
+    //pedidos finalizados
+    let qtdPedidosFinalizados = 0;
+    data.pedidos.forEach(pedido => {
+        if (pedido.status == "🟢Finalizado") {
+            qtdPedidosFinalizados += 1;
+        }
+    });
+    finalizadoPedidos.innerHTML = qtdPedidosFinalizados;
 }
 pegarDados();
