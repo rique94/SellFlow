@@ -24,14 +24,14 @@ Novas funcionalidades e melhorias estão sendo adicionadas ao projeto conforme s
 ## Funcionalidades
 
 * [ ] Gerenciamento de pedidos
-* [ ] Criação de novos pedidos
-* [ ] Visualização de pedidos
+* [x] Criação de novos pedidos
+* [x] Visualização de pedidos
 * [ ] API REST com Express
 * [ ] Sistema de cadastro de lojas
 * [ ] Autenticação de lojas
-* [ ] Gerenciamento de usuários
-* [ ] Banco de dados
-* [ ] Suporte completo a múltiplas lojas
+* [x] Gerenciamento de usuários
+* [x] Banco de dados
+* [x] Suporte completo a múltiplas lojas
 
 ## Estrutura
 
@@ -74,7 +74,7 @@ npm install express
 Inicie o servidor:
 
 ```bash
-npm start
+node .
 ```
 
 ## API
@@ -96,7 +96,7 @@ Durante o desenvolvimento, dados fictícios podem ser utilizados para testes.
 * [x] Estrutura inicial do sistema
 * [x] API inicial
 * [ ] Gerenciamento básico de pedidos
-* [ ] Sistema de lojas
+* [X] Sistema de lojas
 * [x] login
 * [ ] Autenticação e autorização
 * [x] Banco de dados
