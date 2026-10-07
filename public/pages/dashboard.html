@@ -15,7 +15,9 @@
                 </div>
                 <nav>
                     <a id="selecionado">📄 Pedidos</a>
-                    <a href="http://localhost:3000/novo-pedido" >➕ Novo pedido</a>
+                    <a href="http://localhost:3000/novo-pedido"
+                        >➕ Novo pedido</a
+                    >
                 </nav>
             </div>
         </header>
@@ -25,47 +27,170 @@
                 <a href="http://localhost:3000/novo-pedido">+ Novo pedido</a>
             </div>
             <div id="cards-container">
-                <div class="cards-dashboard" id="total-pedidos">
+                <div
+                    class="cards-dashboard"
+                    id="total-pedidos"
+                    onclick="mostrarDados()"
+                >
                     <div class="img-card-dashboard">
-                        <p>🎁</p>
+                        <img
+                            src="../images/gift.png"
+                            alt="imagem line-art de presente"
+                        />
                     </div>
                     <div class="content-card-dashboard">
                         <h3>Total de Pedidos</h3>
-                        <p class="num-card-dashboard" id="num-total-pedidos">0</p>
+                        <p class="num-card-dashboard" id="num-total-pedidos">
+                            0
+                        </p>
                     </div>
                 </div>
-                <div class="cards-dashboard" id="retirar-pedidos">
+                <div
+                    class="cards-dashboard"
+                    id="retirar-pedidos"
+                    onclick="filtrarPedidos('🟡Retirar', '🟣Pagar local')"
+                >
                     <div class="img-card-dashboard">
-                        <p>🎀</p>
+                        <img src="../images/clock-arrow-down.png" alt="imagem line-art de relógio">
                     </div>
                     <div class="content-card-dashboard">
                         <h3>Pedidos a retirar</h3>
-                        <p class="num-card-dashboard" id="num-pedidos-retirar">0</p>
+                        <p class="num-card-dashboard" id="num-pedidos-retirar">
+                            0
+                        </p>
                     </div>
                 </div>
-                <div class="cards-dashboard" id="pagar-pedidos">
+                <div
+                    class="cards-dashboard"
+                    id="pagar-pedidos"
+                    onclick="filtrarPedidos('🔴Pagar', '🟣Pagar local')"
+                >
                     <div class="img-card-dashboard">
-                        <p>💸</p>
+                        <img src="../images/banknote-arrow-up.png" alt="imagem line-art de dinheiro">
                     </div>
                     <div class="content-card-dashboard">
                         <h3>Pedidos a pagar</h3>
-                        <p class="num-card-dashboard" id="num-pedidos-pagar">0</p>
+                        <p class="num-card-dashboard" id="num-pedidos-pagar">
+                            0
+                        </p>
                     </div>
                 </div>
-                <div class="cards-dashboard" id="finalizados-pedidos">
+                <div
+                    class="cards-dashboard"
+                    id="finalizados-pedidos"
+                    onclick="filtrarPedidos('✅Finalizado')"
+                >
                     <div class="img-card-dashboard">
-                        <p>✅</p>
+                        <img src="../images/check.png" alt="imagem line-art check">
                     </div>
                     <div class="content-card-dashboard">
                         <h3>Pedidos finalizados</h3>
-                        <p class="num-card-dashboard" id="num-pedidos-finalizados">0</p>
+                        <p
+                            class="num-card-dashboard"
+                            id="num-pedidos-finalizados"
+                        >
+                            0
+                        </p>
                     </div>
                 </div>
             </div>
-            <hr>
-            <div class="container-cards" id="linhaCard">
-                
+            <div id="filtros-pedidos">
+                <input
+                    id="pesquisa-pedidos"
+                    type="search"
+                    placeholder="Pesquisar por nome ou telefone..."
+                    aria-label="Pesquisar pedidos por nome ou telefone"
+                />
+                <div class="filtros-pedidos-acoes">
+                    <button
+                        class="botao-filtro-pedido"
+                        id="filtro-a-despachar"
+                        type="button"
+                        aria-pressed="false"
+                        onclick="alternarFiltroRapido('🔵Despachar')"
+                    >
+                        A despachar
+                    </button>
+                    <button
+                        class="botao-filtro-pedido"
+                        id="filtro-despachados"
+                        type="button"
+                        aria-pressed="false"
+                        onclick="alternarFiltroRapido('🟦Despachado')"
+                    >
+                        Despachados
+                    </button>
+                    <div class="seletor-status-pedidos">
+                        <button
+                        class="botao-filtro-pedido botao-abre-status"
+                        id="filtro-status"
+                        type="button"
+                        aria-label="Filtrar pedidos por status"
+                        aria-expanded="false"
+                        aria-controls="opcoes-status"
+                        onclick="alternarMenuStatus()"
+                        >
+                        Status: todos ▾
+                        </button>
+                        <div
+                        class="opcoes-status-pedidos"
+                        id="opcoes-status"
+                        hidden
+                        >
+                        <button
+                            class="opcao-filtro-pedido"
+                            type="button"
+                            onclick="filtrarPedidos()"
+                        >
+                            Todos os status
+                        </button>
+                        <button
+                            class="opcao-filtro-pedido"
+                            type="button"
+                            onclick="filtrarPedidos('🔴Pagar')"
+                        >
+                            🔴 Pagar
+                        </button>
+                        <button
+                            class="opcao-filtro-pedido"
+                            type="button"
+                            onclick="filtrarPedidos('🟡Retirar')"
+                        >
+                            🟡 Retirar (pago)
+                        </button>
+                        <button
+                            class="opcao-filtro-pedido"
+                            type="button"
+                            onclick="filtrarPedidos('🟣Pagar local')"
+                        >
+                            🟣 Pagar local
+                        </button>
+                        <button
+                            class="opcao-filtro-pedido"
+                            type="button"
+                            onclick="filtrarPedidos('✅Finalizado')"
+                        >
+                            ✅ Finalizado
+                        </button>
+                        <button
+                            class="opcao-filtro-pedido"
+                            type="button"
+                            onclick="filtrarPedidos('🔵Despachar')"
+                        >
+                            🔵 A despachar
+                        </button>
+                        <button
+                            class="opcao-filtro-pedido"
+                            type="button"
+                            onclick="filtrarPedidos('🟦Despachado')"
+                        >
+                            🟦 Despachado
+                        </button>
+                        </div>
+                    </div>
+                </div>
             </div>
+            <div class="container-cards" id="linhaCard"></div>
         </main>
     </body>
     <script src="../scripts/dashboard.js"></script>
