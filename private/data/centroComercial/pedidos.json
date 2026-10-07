@@ -1,3 +1,1 @@
-[
-    
-]
+[{"cliente":{"nome":"Ana Paula","telefone":"(11) 99215-4467","endereco":"","cep":"","complemento":""},"listaPedidos":[{"desc_peca":"Calça","qtd_peca":"2","valor_peca":"49.99"}],"qtdPecas":1,"status":"🟡Retirar","valorTotal":99.98,"loja":"2","data":"07/10/2026","hora":"11:02","id":1}]

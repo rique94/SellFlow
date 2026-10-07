@@ -116,12 +116,12 @@ function atualizarBotaoFiltroStatus() {
     const botao = document.getElementById("filtro-status");
     const opcoes = document.getElementById("opcoes-status");
     const rotulos = {
-        "🔴Pagar": "🔴 Pagar",
-        "🟡Retirar": "🟡 Retirar (pago)",
-        "🟣Pagar local": "🟣 Pagar local",
-        "✅Finalizado": "✅ Finalizado",
-        "🔵Despachar": "🔵 A despachar",
-        "🟦Despachado": "🟦 Despachado",
+        "🔴Pagar": "🔴Pagar",
+        "🟡Retirar": "🟡Retirar",
+        "🟣Pagar local": "🟣Pagar local",
+        "✅Finalizado": "✅Finalizado",
+        "🔵Despachar": "🔵Despachar",
+        "🟦Despachado": "🟦Despachado",
     };
     const rotulo =
         filtrosStatus.length === 1
