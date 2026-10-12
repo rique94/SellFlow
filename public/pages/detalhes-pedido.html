@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="pt-br">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Detalhes do Pedido</title>
+
+        <link rel="stylesheet" href="/styles/style.css"/>
+        <link rel="stylesheet" href="/styles/detalhes-pedido.css">
+    </head>
+    <body>
+        <header>
+            <div class="sidebar">
+                <div>
+                    <h1>RB Outlet</h1>
+                    <p id="nome_loja"></p>
+                </div>
+                <nav>
+                    <a href="http://localhost:3000/dashboard" class="idLoja"
+                        >📄 Pedidos</a
+                    >
+                    <a href="http://localhost:3000/novo-pedido" class="idLoja"
+                        >➕ Novo pedido</a
+                    >
+                </nav>
+            </div>
+        </header>
+        <main>
+            <div class="order-details">
+                <div class="details-toolbar">
+                    <a class="back-link" id="back-to-orders" href="#">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="m15 18-6-6 6-6M9 12h12" />
+                        </svg>
+                        Voltar para a lista
+                    </a>
+                    <span class="toolbar-divider" aria-hidden="true"></span>
+                </div>
+
+                <section class="order-heading" aria-labelledby="order-title">
+                    <div class="order-heading-copy">
+                        <h2 id="order-title">Pedido</h2>
+                        <div class="order-meta">
+                            <span id="order-date">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <rect x="3" y="5" width="18" height="16" rx="2" />
+                                    <path d="M16 3v4M8 3v4M3 10h18" />
+                                </svg>
+                                <span id="order-date-text">Carregando data...</span>
+                            </span>
+                            <span id="order-store">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M3 10h18l-2-7H5l-2 7ZM5 10v11h14V10M9 21v-7h6v7" />
+                                </svg>
+                                <span id="order-store-text">Carregando loja...</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="order-actions" aria-label="Ações do pedido">
+                        <button class="action-button" id="edit-order" type="button">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="m15 5 4 4M4 20l4.5-1 11-11a2.1 2.1 0 0 0-3-3l-11 11L4 20Z" />
+                            </svg>
+                            Editar
+                        </button>
+                        <button class="action-button action-button-primary" id="save-order" type="submit" form="edit-order-form" hidden>
+                            Salvar alterações
+                        </button>
+                        <button class="action-button" id="cancel-edit" type="button" hidden>
+                            Cancelar
+                        </button>
+                        <button class="action-button" id="print-order" type="button">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v7H7z" />
+                                <path d="M17 11h.01" />
+                            </svg>
+                            Imprimir
+                        </button>
+                        <button class="action-button action-button-danger" id="delete-order" type="button" disabled title="Exclusão de pedidos indisponível">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M3 6h18M8 6V4h8v2m3 0-1 15H6L5 6m4 4v7m6-7v7" />
+                            </svg>
+                            Excluir
+                        </button>
+                    </div>
+                </section>
+
+                <form id="edit-order-form">
+                    <div class="details-overview">
+                        <section class="details-card" aria-labelledby="customer-title">
+                            <div class="card-heading">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0H4Z" />
+                                </svg>
+                                <h3 id="customer-title">Dados do cliente</h3>
+                            </div>
+                            <dl class="customer-fields">
+                                <div>
+                                    <dt>Nome</dt>
+                                    <dd id="customer-name">—</dd>
+                                </div>
+                                <div>
+                                    <dt>Telefone</dt>
+                                    <dd id="customer-phone">—</dd>
+                                </div>
+                                <div>
+                                    <dt>Endereço</dt>
+                                    <dd id="customer-address">—</dd>
+                                </div>
+                            </dl>
+                        </section>
+
+                        <section class="details-card" aria-labelledby="order-info-title">
+                            <div class="card-heading">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M6 3h9l5 5v13H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+                                    <path d="M14 3v6h6M8 13h8m-8 4h8" />
+                                </svg>
+                                <h3 id="order-info-title">Informações do pedido</h3>
+                            </div>
+                            <dl class="order-fields">
+                                <div><dt>ID do pedido</dt><dd id="order-id">—</dd></div>
+                                <div><dt>Data e hora</dt><dd id="order-datetime">—</dd></div>
+                                <div><dt>Loja</dt><dd id="order-store-name">—</dd></div>
+                                <div><dt>Forma de pagamento</dt><dd id="order-payment">Não informado</dd></div>
+                                <div><dt>Status</dt><dd id="order-status">—</dd></div>
+                                <div><dt>Observações</dt><dd id="order-notes">Nenhuma observação informada.</dd></div>
+                            </dl>
+                        </section>
+                    </div>
+
+                    <section class="details-card items-card" aria-labelledby="items-title">
+                        <div class="card-heading items-card-heading">
+                            <div>
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L22 8H6" />
+                                    <circle cx="10" cy="21" r="1" />
+                                    <circle cx="18" cy="21" r="1" />
+                                </svg>
+                                <h3 id="items-title">Itens do pedido</h3>
+                            </div>
+                            <button class="action-button add-item-button edit-only" id="add-order-item" type="button" hidden>
+                                Adicionar item
+                            </button>
+                        </div>
+                        <div class="items-table-wrap">
+                            <table class="items-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Produto</th>
+                                        <th scope="col">Tamanho</th>
+                                        <th scope="col">Qtd.</th>
+                                        <th scope="col">Valor unitário</th>
+                                        <th scope="col">Subtotal</th>
+                                        <th class="edit-only" scope="col" hidden>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="order-items">
+                                    <tr><td colspan="7" class="table-message">Carregando itens...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="details-card order-summary" aria-labelledby="summary-title">
+                        <div class="card-heading">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6 3h9l5 5v13H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+                                <path d="M14 3v6h6M8 13h8m-8 4h5" />
+                            </svg>
+                            <h3 id="summary-title">Resumo do pedido</h3>
+                        </div>
+                        <dl class="summary-fields">
+                            <div><dt id="items-count">Subtotal</dt><dd id="summary-subtotal">—</dd></div>
+                            <div><dt>Frete</dt><dd id="summary-shipping">—</dd></div>
+                            <div class="summary-total"><dt>Total</dt><dd id="summary-total">—</dd></div>
+                        </dl>
+                    </section>
+                </form>
+
+                <p class="details-feedback" id="details-feedback" role="status" hidden></p>
+            </div>
+        </main>
+    </body>
+    <script src="/scripts/detalhes-pedido.js"></script>
+</html>

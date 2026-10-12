@@ -210,7 +210,7 @@ function renderizarPedidos() {
                 (total, item) =>
                     total + Number(item.qtd_peca) * Number(item.valor_peca),
                 0,
-            );
+            ) + (Number(pedido.frete) || 0);
             const classStatus = verifyStatus(pedido);
 
             return `<div class="cards">
@@ -232,7 +232,7 @@ function renderizarPedidos() {
                         </div>
                     </div>
                     <div class="card-content-detalhes">
-                        <a href="#" class="ver-detalhes-a">Ver detalhes ➡️</a>
+                        <a href="#" class="ver-detalhes-a" onclick="verDetalhes(${pedido.id})">Ver detalhes ➡️</a>
                     </div>
                 </div>`;
         })
@@ -243,3 +243,10 @@ document.getElementById("pesquisa-pedidos").addEventListener("input", (event) =>
     termoPesquisa = event.target.value;
     renderizarPedidos();
 });
+
+
+//function verDetalhes()
+
+function verDetalhes(idPedido){
+    window.location.href = `http://localhost:3000/detalhes-pedido/${id}/${idPedido}`;
+}
