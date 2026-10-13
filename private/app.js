@@ -451,6 +451,46 @@ app.put("/api/pedidos/:loja/:pedido", (req, res) => {
     }
 });
 
+app.delete("/api/pedidos/:loja/:pedido", (req, res) => {
+    const idLoja = Number(req.params.loja);
+    const idPedido = Number(req.params.pedido);
+    const jsonCaminho = caminhosPedidos[idLoja];
+
+    if (!jsonCaminho || !Number.isInteger(idPedido) || idPedido < 1) {
+        return res.status(400).json({ error: "Loja ou pedido inválido." });
+    }
+
+    let caminhoTemporario;
+    try {
+        const pedidos = lerPedidos(idLoja);
+        const indicePedido = pedidos.findIndex(
+            (pedido) => Number(pedido.id) === idPedido,
+        );
+        if (indicePedido < 0) {
+            return res.status(404).json({ error: "O pedido não foi encontrado." });
+        }
+
+        pedidos.splice(indicePedido, 1);
+        caminhoTemporario = `${jsonCaminho}.${process.pid}.${Date.now()}.tmp`;
+        fs.writeFileSync(caminhoTemporario, JSON.stringify(pedidos), "utf8");
+        fs.renameSync(caminhoTemporario, jsonCaminho);
+
+        return res.status(200).json({ success: true });
+    } catch (error) {
+        if (caminhoTemporario && fs.existsSync(caminhoTemporario)) {
+            try {
+                fs.unlinkSync(caminhoTemporario);
+            } catch (cleanupError) {
+                console.error("Falha ao remover arquivo temporário:", cleanupError);
+            }
+        }
+        console.error("Falha ao excluir pedido:", error);
+        return res.status(500).json({
+            error: "Ocorreu um erro ao excluir o pedido. Tente novamente.",
+        });
+    }
+});
+
 //rota de datealhes do pedido
 
 app.get("/takePedido/:loja/:pedido", (req, res) => {

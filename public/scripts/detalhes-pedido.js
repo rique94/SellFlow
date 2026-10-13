@@ -60,6 +60,7 @@ function isShippingStatus(status) {
 function renderOrder(order, store) {
     currentOrder = order;
     currentStore = store;
+    document.getElementById("delete-order").disabled = false;
     document.getElementById("order-title").textContent = `Pedido #${order.id}`;
 
     const dateTime =
@@ -392,6 +393,53 @@ async function saveOrder(event) {
     }
 }
 
+async function deleteOrder() {
+    if (!currentOrder || isEditing || isSaving) {
+        return;
+    }
+
+    const confirmed = window.confirm(
+        `Tem certeza de que deseja excluir o pedido #${currentOrder.id}? Esta ação não pode ser desfeita.`,
+    );
+    if (!confirmed) {
+        return;
+    }
+
+    isSaving = true;
+    const deleteButton = document.getElementById("delete-order");
+    deleteButton.disabled = true;
+    deleteButton.textContent = "Excluindo...";
+
+    try {
+        const response = await fetch(
+            `/api/pedidos/${encodeURIComponent(storeId)}/${encodeURIComponent(orderId)}`,
+            { method: "DELETE" },
+        );
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || "Não foi possível excluir o pedido.");
+        }
+
+        window.location.assign(`/dashboard/${encodeURIComponent(storeId)}`);
+    } catch (error) {
+        showFeedback(
+            error instanceof Error
+                ? error.message
+                : "Não foi possível excluir o pedido.",
+            true,
+        );
+    } finally {
+        isSaving = false;
+        deleteButton.disabled = false;
+        deleteButton.innerHTML = `
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 6h18M8 6V4h8v2m3 0-1 15H6L5 6m4 4v7m6-7v7" />
+            </svg>
+            Excluir
+        `;
+    }
+}
+
 async function loadOrderDetails() {
     const feedback = document.getElementById("details-feedback");
     document.getElementById("back-to-orders").href = storeId
@@ -442,6 +490,7 @@ document.getElementById("edit-order").addEventListener("click", beginEditing);
 document.getElementById("cancel-edit").addEventListener("click", cancelEditing);
 document.getElementById("edit-order-form").addEventListener("submit", saveOrder);
 document.getElementById("add-order-item").addEventListener("click", addItem);
+document.getElementById("delete-order").addEventListener("click", deleteOrder);
 document.getElementById("print-order").addEventListener("click", () => {
     window.print();
 });
