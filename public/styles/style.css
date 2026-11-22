@@ -10,68 +10,83 @@ body {
 
     display: flex;
 }
+/* ---------- Barra lateral (compartilhada por todas as páginas) ---------- */
 .sidebar {
-    background-color: rgb(17, 17, 58);
-    color: white;
-
     /*Fixando na esquerda*/
     position: fixed;
     top: 0;
     left: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
     width: 260px;
     height: 100vh;
-}
-.sidebar div {
-    padding: 20px;
-    padding-left: 40px;
-    background-color: rgb(10, 10, 32);
-    border-bottom: 1px solid rgb(50, 50, 75);
-
+    border-right: 1px solid #16285c;
+    background: #0a1947;
+    color: #fff;
     text-align: left;
-
-    
+}
+.sidebar > div {
+    padding: 26px 24px 22px;
+    border-bottom: 1px solid rgb(255 255 255 / 8%);
+}
+.sidebar h1 {
+    color: #fff;
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    line-height: 1.2;
 }
 .sidebar p {
-    color: rgb(167, 167, 167);
-    margin-top: 10px;
+    margin-top: 6px;
+    color: #8fa3c8;
+    font-size: 13px;
 }
-nav {
-    text-align: left;
-
+.sidebar nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 18px 14px;
 }
-nav a {
-    display: block;
-
+.sidebar nav::before {
+    content: "Menu";
+    padding: 0 12px 8px;
+    color: #6f84ad;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+.sidebar nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 12px;
+    border-radius: 7px;
+    color: #c3cfe6;
+    font-size: 14px;
+    font-weight: 600;
     text-decoration: none;
-
-    color: white;
-
-    margin: 25px;
-    padding: 10px;
-
-    font-size: 15pt;
-
-    border-radius: 10px;
-
-    transition: 0.3s;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
 }
-nav a:hover {
-    transition: 0.3s;
-
-    transform: scale(1.1);
-
-    background-color: rgb(34, 34, 107);
+.sidebar nav a:hover {
+    background-color: rgb(255 255 255 / 7%);
+    color: #fff;
 }
-#selecionado {
-    border-radius: 10px;
-    background-color: rgb(34, 34, 107);
+.sidebar nav a:focus-visible {
+    outline: 2px solid #6f9cff;
+    outline-offset: 2px;
 }
-#selecionado:hover {
-    transition: 0.3s;
-
-    transform: scale(1.1);
-
-    background-color: rgb(44, 44, 136);
+.sidebar nav #selecionado {
+    background-color: #173b80;
+    box-shadow: inset 3px 0 0 #6f9cff;
+    color: #fff;
+    cursor: default;
+}
+.sidebar nav #selecionado:hover {
+    background-color: #1d4793;
 }
 
 main {

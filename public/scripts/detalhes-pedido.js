@@ -77,6 +77,7 @@ function renderOrder(order, store) {
 
     setText("order-date-text", dateTime);
     setText("order-datetime", dateTime);
+    setText("nome_loja", store.usrName || "");
     setText("order-store-text", storeName);
     setText("order-store-name", storeName);
     setText("order-id", `#${order.id}`);
@@ -442,9 +443,14 @@ async function deleteOrder() {
 
 async function loadOrderDetails() {
     const feedback = document.getElementById("details-feedback");
-    document.getElementById("back-to-orders").href = storeId
+    const dashboardUrl = storeId
         ? `/dashboard/${encodeURIComponent(storeId)}`
-        : "/dashboard";
+        : "/";
+    document.getElementById("back-to-orders").href = dashboardUrl;
+    document.getElementById("link-pedidos").href = dashboardUrl;
+    document.getElementById("link-novo-pedido").href = storeId
+        ? `/novo-pedido/${encodeURIComponent(storeId)}`
+        : "/";
 
     if (!storeId || !orderId) {
         showFeedback("Não foi possível identificar a loja e o pedido.", true);
@@ -491,8 +497,240 @@ document.getElementById("cancel-edit").addEventListener("click", cancelEditing);
 document.getElementById("edit-order-form").addEventListener("submit", saveOrder);
 document.getElementById("add-order-item").addEventListener("click", addItem);
 document.getElementById("delete-order").addEventListener("click", deleteOrder);
-document.getElementById("print-order").addEventListener("click", () => {
-    window.print();
+/* ---------------- Impressão ---------------- */
+
+const printButton = document.getElementById("print-order");
+const printOptions = document.getElementById("print-options");
+const printSheet = document.getElementById("print-sheet");
+
+function formatCep(cep) {
+    const digits = String(cep || "").replace(/\D/g, "");
+    return digits.length === 8
+        ? `${digits.slice(0, 5)}-${digits.slice(5)}`
+        : String(cep || "");
+}
+
+function formatPhone(phone) {
+    const digits = String(phone || "").replace(/\D/g, "");
+    if (digits.length === 11) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    }
+    if (digits.length === 10) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    }
+    return String(phone || "");
+}
+
+// Remove o emoji do início do status ("🟡Retirar" -> "Retirar")
+function cleanStatus(status) {
+    const label = statuses.find(([value]) => value === status)?.[1] || status || "—";
+    return label.replace(/^[^\p{L}]+/u, "");
+}
+
+function printField(label, value, extraClass = "") {
+    return `
+        <div class="ps-field ${extraClass}">
+            <span class="ps-label">${escapeHtml(label)}</span>
+            <span class="ps-value">${escapeHtml(value || "—")}</span>
+        </div>`;
+}
+
+function getPrintTotals() {
+    const items = getItems();
+    const subtotal = items.reduce(
+        (total, item) =>
+            total + formatValue(item.qtd_peca) * formatValue(item.valor_peca),
+        0,
+    );
+    const shipping = isShippingStatus(currentOrder.status)
+        ? formatValue(currentOrder.frete)
+        : 0;
+    const total = Number.isFinite(Number(currentOrder.valorTotal))
+        ? Number(currentOrder.valorTotal)
+        : subtotal + shipping;
+    return { items, subtotal, shipping, total };
+}
+
+function buildShippingSheet() {
+    const customer = currentOrder.cliente || {};
+    const storeName = currentStore?.usrName || "";
+    const { items } = getPrintTotals();
+    const pieces = items.reduce((total, item) => total + formatValue(item.qtd_peca), 0);
+
+    return `
+        <article class="ps-label-sheet">
+            <header class="ps-label-header">
+                <span>Pedido #${escapeHtml(currentOrder.id)}</span>
+                <span>${escapeHtml(currentOrder.data || "")}</span>
+            </header>
+
+            <section class="ps-block ps-recipient">
+                <h2 class="ps-block-title">Destinatário</h2>
+                <p class="ps-recipient-name">${escapeHtml(customer.nome || "—")}</p>
+                <p class="ps-line">${escapeHtml(customer.endereco || "Endereço não informado")}</p>
+                ${customer.complemento ? `<p class="ps-line">${escapeHtml(customer.complemento)}</p>` : ""}
+                <div class="ps-recipient-footer">
+                    <div>
+                        <span class="ps-label">CEP</span>
+                        <span class="ps-cep">${escapeHtml(formatCep(customer.cep) || "—")}</span>
+                    </div>
+                    <div>
+                        <span class="ps-label">Telefone</span>
+                        <span class="ps-value">${escapeHtml(formatPhone(customer.telefone) || "—")}</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="ps-block ps-sender">
+                <h2 class="ps-block-title">Remetente</h2>
+                <p class="ps-line"><strong>RB Outlet${storeName ? ` · ${escapeHtml(storeName)}` : ""}</strong></p>
+                ${currentStore?.address ? `<p class="ps-line">${escapeHtml(currentStore.address)}</p>` : ""}
+                ${currentStore?.tel ? `<p class="ps-line">Tel.: ${escapeHtml(formatPhone(currentStore.tel))}</p>` : ""}
+            </section>
+
+            <footer class="ps-label-footer">
+                ${pieces} ${pieces === 1 ? "peça" : "peças"} · Conferir conteúdo antes de lacrar
+            </footer>
+        </article>`;
+}
+
+function buildFullSheet() {
+    const customer = currentOrder.cliente || {};
+    const storeName = currentStore?.usrName || "";
+    const { items, subtotal, shipping, total } = getPrintTotals();
+    const dateTime = [currentOrder.data, currentOrder.hora].filter(Boolean).join(" às ");
+
+    const rows = items.length
+        ? items
+              .map((item, index) => {
+                  const quantity = formatValue(item.qtd_peca);
+                  const unitPrice = formatValue(item.valor_peca);
+                  return `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${escapeHtml(item.desc_peca || "Produto sem descrição")}</td>
+                        <td>${escapeHtml(item.tamanho || item.size || "—")}</td>
+                        <td class="ps-num">${quantity}</td>
+                        <td class="ps-num">${formatCurrency(unitPrice)}</td>
+                        <td class="ps-num">${formatCurrency(quantity * unitPrice)}</td>
+                    </tr>`;
+              })
+              .join("")
+        : `<tr><td colspan="6" class="ps-empty">Este pedido não possui itens.</td></tr>`;
+
+    const notes = currentOrder.observacoes || currentOrder.observacao;
+    const payment = currentOrder.formaPagamento || currentOrder.pagamento;
+
+    return `
+        <article class="ps-full-sheet">
+            <header class="ps-full-header">
+                <div>
+                    <p class="ps-brand">RB Outlet</p>
+                    ${storeName ? `<p class="ps-muted">${escapeHtml(storeName)}</p>` : ""}
+                    ${currentStore?.address ? `<p class="ps-muted ps-store-address">${escapeHtml(currentStore.address)}</p>` : ""}
+                    ${currentStore?.tel ? `<p class="ps-muted">Tel.: ${escapeHtml(formatPhone(currentStore.tel))}</p>` : ""}
+                </div>
+                <div class="ps-full-header-right">
+                    <h1>Pedido #${escapeHtml(currentOrder.id)}</h1>
+                    <p class="ps-muted">${escapeHtml(dateTime || "—")}</p>
+                </div>
+            </header>
+
+            <div class="ps-grid">
+                <section class="ps-section">
+                    <h2 class="ps-section-title">Cliente</h2>
+                    ${printField("Nome", customer.nome)}
+                    ${printField("Telefone", formatPhone(customer.telefone))}
+                    ${printField("Endereço", customer.endereco)}
+                    ${customer.complemento ? printField("Complemento", customer.complemento) : ""}
+                    ${printField("CEP", formatCep(customer.cep))}
+                </section>
+                <section class="ps-section">
+                    <h2 class="ps-section-title">Pedido</h2>
+                    ${printField("Status", cleanStatus(currentOrder.status))}
+                    ${printField("Forma de pagamento", payment || "Não informado")}
+                    ${notes ? printField("Observações", notes) : ""}
+                </section>
+            </div>
+
+            <section class="ps-section">
+                <h2 class="ps-section-title">Peças</h2>
+                <table class="ps-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Produto</th>
+                            <th>Tamanho</th>
+                            <th class="ps-num">Qtd.</th>
+                            <th class="ps-num">Valor unit.</th>
+                            <th class="ps-num">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </section>
+
+            <section class="ps-totals">
+                <div><span>Subtotal</span><span>${formatCurrency(subtotal)}</span></div>
+                <div><span>Frete</span><span>${formatCurrency(shipping)}</span></div>
+                <div class="ps-total"><span>Total</span><span>${formatCurrency(total)}</span></div>
+            </section>
+        </article>`;
+}
+
+function preparePrintSheet(mode) {
+    if (!currentOrder) {
+        printSheet.innerHTML = "";
+        return false;
+    }
+    printSheet.dataset.mode = mode;
+    printSheet.innerHTML = mode === "despacho" ? buildShippingSheet() : buildFullSheet();
+    return true;
+}
+
+function setPrintMenu(open) {
+    printOptions.hidden = !open;
+    printButton.setAttribute("aria-expanded", String(open));
+}
+
+printButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setPrintMenu(printOptions.hidden);
+});
+
+printOptions.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-print-mode]");
+    if (!option) {
+        return;
+    }
+    setPrintMenu(false);
+    if (preparePrintSheet(option.dataset.printMode)) {
+        window.print();
+    }
+});
+
+document.addEventListener("click", (event) => {
+    if (!event.target.closest(".print-menu")) {
+        setPrintMenu(false);
+    }
+});
+
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !printOptions.hidden) {
+        setPrintMenu(false);
+        printButton.focus();
+    }
+});
+
+// Se imprimir pelo Ctrl+P, usa a impressão completa por padrão
+window.addEventListener("beforeprint", () => {
+    if (!printSheet.innerHTML.trim()) {
+        preparePrintSheet("completa");
+    }
+});
+
+window.addEventListener("afterprint", () => {
+    printSheet.innerHTML = "";
 });
 
 document.getElementById("order-items").addEventListener("click", (event) => {

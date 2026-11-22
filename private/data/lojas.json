@@ -4,6 +4,7 @@
         "usrName": "Rio Negro",
         "pwd": "rionegro123",
         "tel": "11939470746",
+        "address": "Alameda Rio Negro, 1030 (Loja 05, Condomínio Stadium), Barueri – SP",
         "id": 1
     },
     {
@@ -11,6 +12,7 @@
         "usrName": "Centro Comercial",
         "pwd": "centro123",
         "tel": "11999999999",
+        "address": "Calçada das Margaridas, 150 Centro Comercial de Alphaville - Alphaville, Barueri - SP, 06453-038",
         "id" : 2
     },
     {
@@ -18,6 +20,7 @@
         "usrName": "Conde Comercial",
         "pwd": "conde123",
         "tel": "11988888888",
+        "address": "Centro Comercial Conde - Av. Andrômeda, 612 - Lj 624 - Alphaville, Barueri - SP, 06473-000",
         "id" : 3
     }
 ]

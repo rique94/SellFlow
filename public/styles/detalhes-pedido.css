@@ -453,25 +453,302 @@ main .details-feedback[hidden] {
     }
 }
 
+/* ---------- Menu de impressão ---------- */
+
+main .print-menu {
+    position: relative;
+}
+
+main .print-options {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 15;
+    display: flex;
+    flex-direction: column;
+    width: 290px;
+    padding: 6px;
+    border: 1px solid #dce7f5;
+    border-radius: 9px;
+    background: #fff;
+    box-shadow: 0 10px 28px rgb(16 40 92 / 12%);
+}
+
+main .print-options[hidden] {
+    display: none;
+}
+
+main .print-option {
+    display: grid;
+    gap: 3px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 6px;
+    background: #fff;
+    color: #0b1b48;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+main .print-option strong {
+    font-size: 14px;
+}
+
+main .print-option span {
+    color: #587098;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+main .print-option:hover {
+    background: #edf3ff;
+}
+
+main .print-option:focus-visible {
+    outline: 2px solid #456fbd;
+    outline-offset: -2px;
+}
+
+/* ---------- Folha de impressão ---------- */
+
+#print-sheet {
+    display: none;
+}
+
 @media print {
-    main {
-        min-height: 0;
-        padding: 0;
-        background: #fff;
+    @page {
+        size: A4;
+        margin: 14mm;
     }
 
-    main .details-toolbar,
-    main .order-actions {
-        display: none;
+    /* Esconde tudo da tela (sidebar, toolbar, botões...) e mostra só a folha */
+    body {
+        display: block;
+        background: #fff !important;
+        text-align: left;
     }
 
-    main .order-heading {
-        padding-top: 0;
+    body > *:not(#print-sheet) {
+        display: none !important;
     }
 
-    main .details-card {
+    #print-sheet {
+        display: block;
+        color: #111;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 11pt;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    #print-sheet .ps-label {
+        display: block;
+        color: #666;
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+    }
+
+    #print-sheet .ps-muted {
+        color: #555;
+        font-size: 10pt;
+    }
+
+    /* ----- Despacho (etiqueta) ----- */
+
+    #print-sheet .ps-label-sheet {
+        width: 120mm;
+        border: 1.5px dashed #999;
+        border-radius: 3mm;
+        padding: 7mm;
         break-inside: avoid;
-        border-color: #cbd5e1;
-        box-shadow: none;
+    }
+
+    #print-sheet .ps-label-header {
+        display: flex;
+        justify-content: space-between;
+        padding-bottom: 3mm;
+        border-bottom: 1px solid #ddd;
+        color: #555;
+        font-size: 9pt;
+    }
+
+    #print-sheet .ps-block {
+        padding: 5mm 0;
+    }
+
+    #print-sheet .ps-block + .ps-block {
+        border-top: 1px solid #ddd;
+    }
+
+    #print-sheet .ps-block-title {
+        margin-bottom: 2.5mm;
+        color: #666;
+        font-size: 8pt;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    #print-sheet .ps-recipient-name {
+        margin-bottom: 1.5mm;
+        font-size: 16pt;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    #print-sheet .ps-line {
+        font-size: 11.5pt;
+        line-height: 1.45;
+    }
+
+    #print-sheet .ps-recipient-footer {
+        display: flex;
+        gap: 10mm;
+        margin-top: 4mm;
+    }
+
+    #print-sheet .ps-cep {
+        font-size: 18pt;
+        font-weight: 700;
+        letter-spacing: 1px;
+    }
+
+    #print-sheet .ps-recipient-footer .ps-value {
+        display: block;
+        padding-top: 2mm;
+        font-size: 12pt;
+    }
+
+    #print-sheet .ps-sender .ps-line {
+        font-size: 10pt;
+    }
+
+    #print-sheet .ps-label-footer {
+        padding-top: 3mm;
+        border-top: 1px solid #ddd;
+        color: #555;
+        font-size: 8.5pt;
+        text-align: center;
+    }
+
+    /* ----- Impressão completa ----- */
+
+    #print-sheet .ps-full-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        padding-bottom: 4mm;
+        margin-bottom: 6mm;
+        border-bottom: 2px solid #111;
+    }
+
+    #print-sheet .ps-brand {
+        font-size: 16pt;
+        font-weight: 700;
+    }
+
+    #print-sheet .ps-store-address {
+        max-width: 105mm;
+        margin-top: 1mm;
+        font-size: 9pt;
+        line-height: 1.35;
+    }
+
+    #print-sheet .ps-full-header-right {
+        text-align: right;
+    }
+
+    #print-sheet .ps-full-header h1 {
+        font-size: 18pt;
+    }
+
+    #print-sheet .ps-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8mm;
+    }
+
+    #print-sheet .ps-section {
+        margin-bottom: 6mm;
+        break-inside: avoid;
+    }
+
+    #print-sheet .ps-section-title {
+        margin-bottom: 3mm;
+        padding-bottom: 1.5mm;
+        border-bottom: 1px solid #ccc;
+        font-size: 10pt;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+    }
+
+    #print-sheet .ps-field {
+        margin-bottom: 2.5mm;
+    }
+
+    #print-sheet .ps-field .ps-value {
+        display: block;
+        font-size: 11pt;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+    }
+
+    #print-sheet .ps-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10pt;
+    }
+
+    #print-sheet .ps-table th {
+        padding: 2mm;
+        border-bottom: 1px solid #999;
+        color: #555;
+        font-size: 8.5pt;
+        font-weight: 700;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    #print-sheet .ps-table td {
+        padding: 2.2mm 2mm;
+        border-bottom: 1px solid #e3e3e3;
+        vertical-align: top;
+    }
+
+    #print-sheet .ps-table tr {
+        break-inside: avoid;
+    }
+
+    #print-sheet .ps-num {
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    #print-sheet .ps-empty {
+        color: #666;
+        text-align: center;
+    }
+
+    #print-sheet .ps-totals {
+        width: 70mm;
+        margin-left: auto;
+        break-inside: avoid;
+    }
+
+    #print-sheet .ps-totals > div {
+        display: flex;
+        justify-content: space-between;
+        padding: 1.5mm 0;
+        font-size: 10.5pt;
+    }
+
+    #print-sheet .ps-totals .ps-total {
+        margin-top: 1.5mm;
+        padding-top: 2.5mm;
+        border-top: 2px solid #111;
+        font-size: 13pt;
+        font-weight: 700;
     }
 }

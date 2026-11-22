@@ -16,12 +16,8 @@
                     <p id="nome_loja"></p>
                 </div>
                 <nav>
-                    <a href="http://localhost:3000/dashboard" class="idLoja"
-                        >📄 Pedidos</a
-                    >
-                    <a href="http://localhost:3000/novo-pedido" class="idLoja"
-                        >➕ Novo pedido</a
-                    >
+                    <a href="/" class="idLoja" id="link-pedidos">📄 Pedidos</a>
+                    <a href="/" class="idLoja" id="link-novo-pedido">➕ Novo pedido</a>
                 </nav>
             </div>
         </header>
@@ -69,13 +65,32 @@
                         <button class="action-button" id="cancel-edit" type="button" hidden>
                             Cancelar
                         </button>
-                        <button class="action-button" id="print-order" type="button">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v7H7z" />
-                                <path d="M17 11h.01" />
-                            </svg>
-                            Imprimir
-                        </button>
+                        <div class="print-menu">
+                            <button
+                                class="action-button"
+                                id="print-order"
+                                type="button"
+                                aria-haspopup="true"
+                                aria-expanded="false"
+                                aria-controls="print-options"
+                            >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v7H7z" />
+                                    <path d="M17 11h.01" />
+                                </svg>
+                                Imprimir ▾
+                            </button>
+                            <div class="print-options" id="print-options" hidden>
+                                <button class="print-option" type="button" data-print-mode="despacho">
+                                    <strong>Impressão para despacho</strong>
+                                    <span>Etiqueta com destinatário e remetente para os Correios</span>
+                                </button>
+                                <button class="print-option" type="button" data-print-mode="completa">
+                                    <strong>Impressão completa</strong>
+                                    <span>Todos os dados do pedido, incluindo as peças</span>
+                                </button>
+                            </div>
+                        </div>
                         <button class="action-button action-button-danger" id="delete-order" type="button" disabled>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M3 6h18M8 6V4h8v2m3 0-1 15H6L5 6m4 4v7m6-7v7" />
@@ -182,6 +197,9 @@
                 <p class="details-feedback" id="details-feedback" role="status" hidden></p>
             </div>
         </main>
+
+        <!-- Folha usada apenas na impressão (preenchida pelo detalhes-pedido.js) -->
+        <div id="print-sheet" aria-hidden="true"></div>
     </body>
     <script src="/scripts/detalhes-pedido.js"></script>
 </html>

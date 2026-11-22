@@ -120,9 +120,11 @@ function formatPhone(value) {
 
 async function pegarDados() {
     const storeName = document.getElementById("nome_loja");
-    document.querySelector("#header a").href = storeId
+    const dashboardUrl = storeId
         ? `/dashboard/${encodeURIComponent(storeId)}`
-        : "/dashboard";
+        : "/";
+    document.getElementById("link-pedidos").href = dashboardUrl;
+    document.getElementById("link-voltar").href = dashboardUrl;
     try {
         const response = await fetch(`/api/takeData/${encodeURIComponent(storeId)}`);
         if (!response.ok) {
