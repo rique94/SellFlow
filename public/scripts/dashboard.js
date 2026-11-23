@@ -4,16 +4,6 @@ let totalPedidos = document.getElementById("num-total-pedidos");
 let retirarPedidos = document.getElementById("num-pedidos-retirar");
 let pagarPedidos = document.getElementById("num-pedidos-pagar");
 let finalizadoPedidos = document.getElementById("num-pedidos-finalizados");
-//pegando o id da loja
-const id = window.location.pathname.split("/").pop();
-
-let links = document.querySelectorAll(
-    'a[href="http://localhost:3000/novo-pedido"]',
-);
-links.forEach((link) => {
-    link.href = `http://localhost:3000/novo-pedido/${id}`;
-});
-
 //dados e pedidos
 let data;
 let pedidos;
@@ -23,13 +13,28 @@ let termoPesquisa = "";
 iniciar();
 
 async function iniciar() {
-    await pegarDados();
+    try {
+        await pegarDados();
+    } catch (error) {
+        document.getElementById("linhaCard").innerHTML =
+            "<p>Não foi possível carregar os pedidos. Verifique se o servidor está rodando.</p>";
+        return;
+    }
     mostrarDados();
 }
 
 async function pegarDados() {
-    const response = await fetch(`http://localhost:3000/api/takeData/${id}`);
-    data = await response.json();
+    const [respostaLoja, respostaPedidos] = await Promise.all([
+        fetch("/api/loja"),
+        fetch("/api/pedidos"),
+    ]);
+    if (!respostaLoja.ok || !respostaPedidos.ok) {
+        throw new Error("Não foi possível carregar os dados da loja.");
+    }
+    data = {
+        usr: await respostaLoja.json(),
+        pedidos: await respostaPedidos.json(),
+    };
     pedidos = data.pedidos;
 }
 
@@ -38,7 +43,7 @@ function mostrarDados() {
 
     //console.log(data);
 
-    nomeLoja.innerHTML = data.usr.usrName;
+    nomeLoja.textContent = data.usr.usrName;
 
     //mostrando os numeros totais
     //pedidos totais
@@ -158,6 +163,17 @@ function atualizarBotoesFiltroRapido() {
     });
 }
 
+// Escapa texto antes de colocar dentro de innerHTML (evita XSS com nomes maliciosos)
+function escapeHtml(valor) {
+    return String(valor ?? "").replace(/[&<>"']/g, (caractere) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+    })[caractere]);
+}
+
 function normalizarTexto(texto) {
     return texto
         .toLocaleLowerCase("pt-BR")
@@ -216,15 +232,15 @@ function renderizarPedidos() {
             return `<div class="cards">
                     <div class="cards-content">
                         <div class="card-linha-1">
-                            <h3 class="num-pedido"># ${pedido.id}</h3>
-                            <p class="data-hora-pedido"><span class="data-pedido">${pedido.data}</span> ● <span class="hora-pedido">${pedido.hora}</span></p>
+                            <h3 class="num-pedido"># ${escapeHtml(pedido.id)}</h3>
+                            <p class="data-hora-pedido"><span class="data-pedido">${escapeHtml(pedido.data)}</span> ● <span class="hora-pedido">${escapeHtml(pedido.hora)}</span></p>
                         </div>
                         <div class="card-linha-2" >
                             <div class="dados-pessoais-pedido">
-                                <h3 class="nome-pedido">${primeiroNome}</h3>
-                                <p class="telefone-pedido">${telefone}</p>
+                                <h3 class="nome-pedido">${escapeHtml(primeiroNome)}</h3>
+                                <p class="telefone-pedido">${escapeHtml(telefone)}</p>
                             </div>
-                            <p class="${classStatus}">${pedido.status}</p>
+                            <p class="${classStatus}">${escapeHtml(pedido.status)}</p>
                         </div>
                         <div class="card-linha-3">
                             <p class="qtd-produtos">${qtdPecas} produto(s)</p>
@@ -232,7 +248,7 @@ function renderizarPedidos() {
                         </div>
                     </div>
                     <div class="card-content-detalhes">
-                        <a href="#" class="ver-detalhes-a" onclick="verDetalhes(${pedido.id})">Ver detalhes ➡️</a>
+                        <a href="/detalhes-pedido/${encodeURIComponent(pedido.id)}" class="ver-detalhes-a">Ver detalhes ➡️</a>
                     </div>
                 </div>`;
         })
@@ -245,8 +261,3 @@ document.getElementById("pesquisa-pedidos").addEventListener("input", (event) =>
 });
 
 
-//function verDetalhes()
-
-function verDetalhes(idPedido){
-    window.location.href = `http://localhost:3000/detalhes-pedido/${id}/${idPedido}`;
-}

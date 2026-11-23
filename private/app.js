@@ -1,144 +1,88 @@
-//importando o fs
 const fs = require("fs");
-//importando o express
-const express = require("express");
-const app = express();
-
-//importando o path
+const http = require("http");
 const path = require("path");
+const express = require("express");
 
-//importando o json com as lojas
-const storesJson = require("./data/lojas.json");
-const { json } = require("stream/consumers");
-//colocando as lojas em um array
-const stores = storesJson;
+const app = express();
+const PORT = Number(process.env.PORT) || 3000;
 
-const caminhosPedidos = {
-    1: path.join(__dirname, "./data/rioNegro/pedidos.json"),
-    2: path.join(__dirname, "./data/centroComercial/pedidos.json"),
-    3: path.join(__dirname, "./data/conde/pedidos.json"),
-};
+/* ================= Arquivos de dados ================= */
 
-function lerPedidos(id) {
-    const caminho = caminhosPedidos[id];
+const PASTA_DADOS = path.join(__dirname, "data");
+const CAMINHO_LOJA = path.join(PASTA_DADOS, "loja.json");
+const CAMINHO_PEDIDOS = path.join(PASTA_DADOS, "pedidos.json");
+const PASTA_PAGINAS = path.join(__dirname, "../public/pages");
 
-    if (!caminho) {
+const STATUSES_PERMITIDOS = [
+    "🔴Pagar",
+    "🟡Retirar",
+    "🟣Pagar local",
+    "✅Finalizado",
+    "🔵Despachar",
+    "🟦Despachado",
+];
+
+// Lê o arquivo a cada chamada para sempre refletir a versão atual do disco
+function lerLoja() {
+    if (!fs.existsSync(CAMINHO_LOJA)) {
         return null;
     }
-
-    return JSON.parse(fs.readFileSync(caminho, "utf8"));
+    return JSON.parse(fs.readFileSync(CAMINHO_LOJA, "utf8"));
 }
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, "../public")));
+// Dados da loja que podem ir para o navegador (nunca a senha)
+function lojaPublica(loja) {
+    const { pwd, ...dados } = loja;
+    return dados;
+}
 
-//rota de pedidos
-app.get("/dashboard/:id", (req, res) => {
-    res.sendFile(path.join(__dirname, "../public/pages/dashboard.html"));
-});
-
-//rota para criar um novo pedido
-app.get("/novo-pedido/:id", (req, res) => {
-    res.sendFile(path.join(__dirname, "../public/pages/novo-pedido.html"));
-});
-
-//rota para verificar o login
-app.post("/api/login", (req, res) => {
-    //pegando os dados
-    const usr = req.body.usr;
-    const pwd = req.body.pwd;
-
-    //verificando os dados
-    for (let i = 0; i < stores.length; i++) {
-        if (
-            (usr == stores[i].login || usr == stores[i].tel) &&
-            pwd == stores[i].pwd
-        ) {
-            console.log("Entrada bem sucedida!");
-            return res.status(200).json(stores[i].id);
-        }
+function lerPedidos() {
+    if (!fs.existsSync(CAMINHO_PEDIDOS)) {
+        return [];
     }
-    console.log("Alguma credencial está errada!");
-    res.sendStatus(401);
-});
+    return JSON.parse(fs.readFileSync(CAMINHO_PEDIDOS, "utf8"));
+}
 
-//rota pra pegar todos os dados da loja
-app.get("/api/takeData/:id", (req, res) => {
-    const id = req.params.id;
-    let usrData;
-    let usrPedidos = [];
-    let json;
-
-    //pegando os dados da loja
-    for (let i = 0; i < stores.length; i++) {
-        if (stores[i].id == id) {
-            usrData = stores[i];
-
-            //procurando os pedidos da rio negro
-            if (id == 1) {
-                usrPedidos = lerPedidos(id);
-
-                // botando tudo dentro de um objeto
-                json = {
-                    usr: usrData,
-                    pedidos: usrPedidos,
-                };
-
-                //enviando o objeto
-                console.log("enviando dados da Rio Negro");
-                return res.status(200).json(json);
-            } else if (id == 2) {
-                usrPedidos = lerPedidos(id);
-
-                // botando tudo dentro de um objeto
-                json = {
-                    usr: usrData,
-                    pedidos: usrPedidos,
-                };
-
-                //enviando o objeto
-                console.log("enviando dados do centro comercial");
-                return res.status(200).json(json);
-            } else if (id == 3) {
-                usrPedidos = lerPedidos(id);
-
-                // botando tudo dentro de um objeto
-                json = {
-                    usr: usrData,
-                    pedidos: usrPedidos,
-                };
-
-                //enviando o objeto
-                console.log("enviando dados do Conde");
-                return res.status(200).json(json);
+// Escrita atômica: grava num temporário e renomeia, para não corromper o arquivo
+function salvarPedidos(pedidos) {
+    const temporario = `${CAMINHO_PEDIDOS}.${process.pid}.${Date.now()}.tmp`;
+    try {
+        fs.writeFileSync(temporario, JSON.stringify(pedidos, null, 2), "utf8");
+        fs.renameSync(temporario, CAMINHO_PEDIDOS);
+    } catch (error) {
+        if (fs.existsSync(temporario)) {
+            try {
+                fs.unlinkSync(temporario);
+            } catch (cleanupError) {
+                console.error("Falha ao remover arquivo temporário:", cleanupError);
             }
         }
+        throw error;
     }
-    res.sendStatus(401);
-});
+}
 
-//rota de enviar pedido
-app.post("/api/enviar-pedido", (req, res) => {
-    const id = Number(req.body.loja);
+/* ================= Validação de pedidos ================= */
 
-    const jsonCaminho = caminhosPedidos[id];
-    if (!jsonCaminho) {
-        return res.status(400).json({ error: "Loja inválida." });
+function isObjeto(valor) {
+    return Boolean(valor) && typeof valor === "object" && !Array.isArray(valor);
+}
+
+function isStatusComFrete(status) {
+    return status === "🔵Despachar" || status === "🟦Despachado";
+}
+
+/**
+ * Valida o corpo de um pedido (criação ou edição).
+ * Retorna { erro } quando algo é inválido ou { pedido } já normalizado.
+ */
+function validarPedido(dados) {
+    if (!isObjeto(dados)) {
+        return { erro: "Dados do pedido inválidos." };
     }
 
-    const statusesPermitidos = [
-        "🔴Pagar",
-        "🟡Retirar",
-        "🟣Pagar local",
-        "✅Finalizado",
-        "🔵Despachar",
-        "🟦Despachado",
-    ];
-    const cliente = req.body.cliente;
+    const { cliente } = dados;
     if (
-        !cliente ||
-        typeof cliente !== "object" ||
-        Array.isArray(cliente) ||
+        !isObjeto(cliente) ||
         typeof cliente.nome !== "string" ||
         !cliente.nome.trim() ||
         cliente.nome.length > 120 ||
@@ -146,199 +90,31 @@ app.post("/api/enviar-pedido", (req, res) => {
         !cliente.telefone.trim() ||
         cliente.telefone.length > 30
     ) {
-        return res.status(400).json({
-            error: "Informe um nome e telefone válidos para o cliente.",
-        });
-    }
-    const camposCliente = ["endereco", "cep", "complemento"];
-    if (
-        camposCliente.some(
-            (campo) =>
-                cliente[campo] !== undefined &&
-                (typeof cliente[campo] !== "string" ||
-                    cliente[campo].length >
-                        { endereco: 250, cep: 12, complemento: 250 }[campo]),
-        )
-    ) {
-        return res.status(400).json({ error: "Os dados de endereço são inválidos." });
+        return { erro: "Informe um nome e telefone válidos para o cliente." };
     }
 
-    const { status } = req.body;
-    const listaEnviada = req.body.listaPedidos;
-    if (
-        !statusesPermitidos.includes(status) ||
-        !Array.isArray(listaEnviada) ||
-        listaEnviada.length < 1 ||
-        listaEnviada.length > 100
-    ) {
-        return res.status(400).json({
-            error: "Informe um status válido e pelo menos um item.",
-        });
-    }
-
-    const listaPedidosValida = listaEnviada.every((item) => {
-        if (!item || typeof item !== "object" || Array.isArray(item)) {
-            return false;
-        }
-        const quantidade = Number(item.qtd_peca);
-        const valor = Number(item.valor_peca);
-        return (
-            typeof item.desc_peca === "string" &&
-            Boolean(item.desc_peca.trim()) &&
-            item.desc_peca.length <= 160 &&
-            Number.isInteger(quantidade) &&
-            quantidade >= 1 &&
-            quantidade <= 10000 &&
-            item.valor_peca !== "" &&
-            (typeof item.valor_peca === "string" ||
-                typeof item.valor_peca === "number") &&
-            Number.isFinite(valor) &&
-            valor >= 0 &&
-            valor <= 10000000 &&
-            (item.tamanho === undefined ||
-                (typeof item.tamanho === "string" && item.tamanho.length <= 40))
-        );
-    });
-    if (!listaPedidosValida) {
-        return res.status(400).json({
-            error: "Confira a descrição, tamanho, quantidade e valor das peças.",
-        });
-    }
-
-    const statusComFrete = status === "🔵Despachar" || status === "🟦Despachado";
-    const freteEnviado = req.body.frete;
-    const frete = statusComFrete ? Number(freteEnviado) : 0;
-    if (
-        statusComFrete &&
-        (freteEnviado === "" ||
-            !Number.isFinite(frete) ||
-            frete < 0 ||
-            frete > 10000000)
-    ) {
-        return res.status(400).json({ error: "Informe um valor de frete válido." });
-    }
-    if (
-        freteEnviado !== undefined &&
-        (!Number.isFinite(Number(freteEnviado)) ||
-            Number(freteEnviado) < 0 ||
-            Number(freteEnviado) > 10000000)
-    ) {
-        return res.status(400).json({ error: "O valor de frete é inválido." });
-    }
-    const pedidos = lerPedidos(id);
-    const ultimoPedidoComId = [...pedidos].reverse().find((pedido) => {
-        const pedidoId = Number(pedido.id);
-        return Number.isInteger(pedidoId) && pedidoId >= 1 && pedidoId <= 999;
-    });
-    const ultimoId = ultimoPedidoComId
-        ? Number(ultimoPedidoComId.id)
-        : pedidos.length;
-    const novoId = (ultimoId % 999) + 1;
-    const listaPedidos = listaEnviada.map((item) => {
-        const novaPeca = {
-            desc_peca: item.desc_peca.trim(),
-            qtd_peca: String(Number(item.qtd_peca)),
-            valor_peca: String(Number(item.valor_peca)),
-        };
-        if (item.tamanho && item.tamanho.trim()) {
-            novaPeca.tamanho = item.tamanho.trim();
-        }
-        return novaPeca;
-    });
-    const subtotal = listaPedidos.reduce(
-        (total, item) =>
-            total + Number(item.qtd_peca) * Number(item.valor_peca),
-        0,
+    const limitesEndereco = { endereco: 250, cep: 12, complemento: 250 };
+    const enderecoInvalido = Object.entries(limitesEndereco).some(
+        ([campo, limite]) =>
+            cliente[campo] !== undefined &&
+            (typeof cliente[campo] !== "string" || cliente[campo].length > limite),
     );
-    const pedidoCriado = {
-        ...req.body,
-        cliente: {
-            nome: cliente.nome.trim(),
-            telefone: cliente.telefone.trim(),
-            endereco: typeof cliente.endereco === "string" ? cliente.endereco.trim() : "",
-            cep: typeof cliente.cep === "string" ? cliente.cep.trim() : "",
-            complemento:
-                typeof cliente.complemento === "string"
-                    ? cliente.complemento.trim()
-                    : "",
-        },
-        listaPedidos,
-        qtdPecas: listaPedidos.length,
-        frete,
-        valorTotal: Number((subtotal + frete).toFixed(2)),
-        loja: String(id),
-        id: novoId,
-    };
-
-    pedidos.push(pedidoCriado);
-    fs.writeFileSync(jsonCaminho, JSON.stringify(pedidos), "utf8");
-    return res.status(201).json({ pedido: pedidoCriado });
-});
-
-app.put("/api/pedidos/:loja/:pedido", (req, res) => {
-    const idLoja = Number(req.params.loja);
-    const idPedido = Number(req.params.pedido);
-    const jsonCaminho = caminhosPedidos[idLoja];
-    const dados = req.body;
-    const statusesPermitidos = [
-        "🔴Pagar",
-        "🟡Retirar",
-        "🟣Pagar local",
-        "✅Finalizado",
-        "🔵Despachar",
-        "🟦Despachado",
-    ];
-
-    if (!jsonCaminho || !Number.isInteger(idPedido) || idPedido < 1) {
-        return res.status(400).json({ error: "Loja ou pedido inválido." });
-    }
-    if (!dados || typeof dados !== "object" || Array.isArray(dados)) {
-        return res.status(400).json({ error: "Dados do pedido inválidos." });
+    if (enderecoInvalido) {
+        return { erro: "Os dados de endereço são inválidos." };
     }
 
-    const cliente = dados.cliente;
+    const { status, listaPedidos: itens } = dados;
     if (
-        !cliente ||
-        typeof cliente !== "object" ||
-        Array.isArray(cliente) ||
-        typeof cliente.nome !== "string" ||
-        !cliente.nome.trim() ||
-        cliente.nome.length > 120 ||
-        typeof cliente.telefone !== "string" ||
-        !cliente.telefone.trim() ||
-        cliente.telefone.length > 30
+        !STATUSES_PERMITIDOS.includes(status) ||
+        !Array.isArray(itens) ||
+        itens.length < 1 ||
+        itens.length > 100
     ) {
-        return res.status(400).json({
-            error: "Informe um nome e telefone válidos para o cliente.",
-        });
+        return { erro: "Informe um status válido e pelo menos um item." };
     }
 
-    const camposCliente = ["endereco", "cep", "complemento"];
-    if (
-        camposCliente.some(
-            (campo) =>
-                cliente[campo] !== undefined &&
-                (typeof cliente[campo] !== "string" ||
-                    cliente[campo].length >
-                        { endereco: 250, cep: 12, complemento: 250 }[campo]),
-        )
-    ) {
-        return res.status(400).json({ error: "Os dados de endereço são inválidos." });
-    }
-
-    if (
-        !statusesPermitidos.includes(dados.status) ||
-        !Array.isArray(dados.listaPedidos) ||
-        dados.listaPedidos.length < 1 ||
-        dados.listaPedidos.length > 100
-    ) {
-        return res.status(400).json({
-            error: "Informe um status válido e pelo menos um item.",
-        });
-    }
-
-    const itensValidos = dados.listaPedidos.every((item) => {
-        if (!item || typeof item !== "object" || Array.isArray(item)) {
+    const itensValidos = itens.every((item) => {
+        if (!isObjeto(item)) {
             return false;
         }
         const quantidade = Number(item.qtd_peca);
@@ -361,61 +137,46 @@ app.put("/api/pedidos/:loja/:pedido", (req, res) => {
         );
     });
     if (!itensValidos) {
-        return res.status(400).json({
-            error: "Confira a descrição, quantidade, tamanho e valor dos itens.",
-        });
+        return { erro: "Confira a descrição, tamanho, quantidade e valor das peças." };
     }
 
-    const statusComFrete = dados.status === "🔵Despachar" || dados.status === "🟦Despachado";
     const freteEnviado = dados.frete;
-    const frete = statusComFrete ? Number(freteEnviado) : 0;
-    if (
-        statusComFrete &&
-        (freteEnviado === "" ||
-            !Number.isFinite(frete) ||
-            frete < 0 ||
-            frete > 10000000)
-    ) {
-        return res.status(400).json({ error: "Informe um valor de frete válido." });
-    }
     if (
         freteEnviado !== undefined &&
-        (!Number.isFinite(Number(freteEnviado)) ||
+        (freteEnviado === "" ||
+            !Number.isFinite(Number(freteEnviado)) ||
             Number(freteEnviado) < 0 ||
             Number(freteEnviado) > 10000000)
     ) {
-        return res.status(400).json({ error: "O valor de frete é inválido." });
+        return {
+            erro: isStatusComFrete(status)
+                ? "Informe um valor de frete válido."
+                : "O valor de frete é inválido.",
+        };
     }
+    if (isStatusComFrete(status) && freteEnviado === undefined) {
+        return { erro: "Informe um valor de frete válido." };
+    }
+    const frete = isStatusComFrete(status) ? Number(freteEnviado) : 0;
 
-    let caminhoTemporario;
-    try {
-        const pedidos = lerPedidos(idLoja);
-        const indicePedido = pedidos.findIndex(
-            (pedido) => Number(pedido.id) === idPedido,
-        );
-        if (indicePedido < 0) {
-            return res.status(404).json({ error: "O pedido não foi encontrado." });
+    const listaPedidos = itens.map((item) => {
+        const peca = {
+            desc_peca: item.desc_peca.trim(),
+            qtd_peca: String(Number(item.qtd_peca)),
+            valor_peca: String(Number(item.valor_peca)),
+        };
+        if (item.tamanho && item.tamanho.trim()) {
+            peca.tamanho = item.tamanho.trim();
         }
+        return peca;
+    });
+    const subtotal = listaPedidos.reduce(
+        (total, item) => total + Number(item.qtd_peca) * Number(item.valor_peca),
+        0,
+    );
 
-        const pedidoAtual = pedidos[indicePedido];
-        const listaPedidos = dados.listaPedidos.map((item) => {
-            const novoItem = {
-                desc_peca: item.desc_peca.trim(),
-                qtd_peca: String(Number(item.qtd_peca)),
-                valor_peca: String(Number(item.valor_peca)),
-            };
-            if (item.tamanho) {
-                novoItem.tamanho = item.tamanho.trim();
-            }
-            return novoItem;
-        });
-        const subtotal = listaPedidos.reduce(
-            (total, item) =>
-                total + Number(item.qtd_peca) * Number(item.valor_peca),
-            0,
-        );
-        const pedidoAtualizado = {
-            ...pedidoAtual,
+    return {
+        pedido: {
             cliente: {
                 nome: cliente.nome.trim(),
                 telefone: cliente.telefone.trim(),
@@ -425,25 +186,183 @@ app.put("/api/pedidos/:loja/:pedido", (req, res) => {
             },
             listaPedidos,
             qtdPecas: listaPedidos.length,
-            status: dados.status,
+            status,
             frete,
             valorTotal: Number((subtotal + frete).toFixed(2)),
-        };
-        pedidos[indicePedido] = pedidoAtualizado;
+        },
+    };
+}
 
-        caminhoTemporario = `${jsonCaminho}.${process.pid}.${Date.now()}.tmp`;
-        fs.writeFileSync(caminhoTemporario, JSON.stringify(pedidos), "utf8");
-        fs.renameSync(caminhoTemporario, jsonCaminho);
+const ID_MAXIMO = 999;
+
+/**
+ * Próximo id depois do último pedido criado (1 a 999, voltando ao 1 depois do 999),
+ * pulando ids que ainda estão em uso para nunca gerar duplicados.
+ */
+function proximoIdPedido(pedidos) {
+    const idsEmUso = new Set(
+        pedidos
+            .map((pedido) => Number(pedido.id))
+            .filter((id) => Number.isInteger(id) && id >= 1 && id <= ID_MAXIMO),
+    );
+    if (idsEmUso.size >= ID_MAXIMO) {
+        return null;
+    }
+
+    const ultimoComId = [...pedidos].reverse().find((pedido) => {
+        const id = Number(pedido.id);
+        return Number.isInteger(id) && id >= 1 && id <= ID_MAXIMO;
+    });
+    let candidato = ultimoComId ? Number(ultimoComId.id) : 0;
+    do {
+        candidato = (candidato % ID_MAXIMO) + 1;
+    } while (idsEmUso.has(candidato));
+    return candidato;
+}
+
+function lerIdPedido(req, res) {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) {
+        res.status(400).json({ error: "Pedido inválido." });
+        return null;
+    }
+    return id;
+}
+
+/* ================= Middlewares ================= */
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "../public")));
+
+// Enquanto a loja não for cadastrada, a API não funciona
+app.use("/api", (req, res, next) => {
+    if (!fs.existsSync(CAMINHO_LOJA)) {
+        return res.status(503).json({
+            error: "Nenhuma loja cadastrada nesta instalação.",
+        });
+    }
+    next();
+});
+
+/* ================= Páginas ================= */
+
+app.get("/dashboard", (req, res) => {
+    res.sendFile(path.join(PASTA_PAGINAS, "dashboard.html"));
+});
+
+app.get("/novo-pedido", (req, res) => {
+    res.sendFile(path.join(PASTA_PAGINAS, "novo-pedido.html"));
+});
+
+app.get("/detalhes-pedido/:id", (req, res) => {
+    res.sendFile(path.join(PASTA_PAGINAS, "detalhes-pedido.html"));
+});
+
+// URLs antigas (da época com várias lojas) redirecionam para as novas
+app.get("/dashboard/:loja", (req, res) => res.redirect(302, "/dashboard"));
+app.get("/novo-pedido/:loja", (req, res) => res.redirect(302, "/novo-pedido"));
+app.get("/detalhes-pedido/:loja/:id", (req, res) => {
+    res.redirect(302, `/detalhes-pedido/${encodeURIComponent(req.params.id)}`);
+});
+
+/* ================= API ================= */
+
+// Login
+app.post("/api/login", (req, res) => {
+    const { usr, pwd } = req.body || {};
+    const loja = lerLoja();
+
+    if ((usr === loja.login || usr === loja.tel) && pwd === loja.pwd) {
+        console.log("Entrada bem sucedida!");
+        return res.status(200).json({ ok: true });
+    }
+    console.log("Alguma credencial está errada!");
+    return res.status(401).json({ error: "Usuário ou senha incorretos." });
+});
+
+// Dados da loja
+app.get("/api/loja", (req, res) => {
+    res.json(lojaPublica(lerLoja()));
+});
+
+// Lista de pedidos
+app.get("/api/pedidos", (req, res) => {
+    res.json(lerPedidos());
+});
+
+// Um pedido
+app.get("/api/pedidos/:id", (req, res) => {
+    const id = lerIdPedido(req, res);
+    if (id === null) return;
+
+    const pedido = lerPedidos().find((item) => Number(item.id) === id);
+    if (!pedido) {
+        return res.status(404).json({ error: "O pedido não foi encontrado." });
+    }
+    res.json(pedido);
+});
+
+// Criar pedido
+app.post("/api/pedidos", (req, res) => {
+    const { erro, pedido } = validarPedido(req.body);
+    if (erro) {
+        return res.status(400).json({ error: erro });
+    }
+
+    try {
+        const pedidos = lerPedidos();
+        const novoId = proximoIdPedido(pedidos);
+        if (novoId === null) {
+            return res.status(409).json({
+                error: `Limite de ${ID_MAXIMO} pedidos atingido. Exclua pedidos antigos para criar novos.`,
+            });
+        }
+        const agora = new Date();
+        const pedidoCriado = {
+            ...pedido,
+            data: agora.toLocaleDateString("pt-BR"),
+            hora: agora.toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+            }),
+            id: novoId,
+        };
+
+        pedidos.push(pedidoCriado);
+        salvarPedidos(pedidos);
+        return res.status(201).json({ pedido: pedidoCriado });
+    } catch (error) {
+        console.error("Falha ao criar pedido:", error);
+        return res.status(500).json({
+            error: "Ocorreu um erro ao salvar o pedido. Tente novamente.",
+        });
+    }
+});
+
+// Editar pedido
+app.put("/api/pedidos/:id", (req, res) => {
+    const id = lerIdPedido(req, res);
+    if (id === null) return;
+
+    const { erro, pedido } = validarPedido(req.body);
+    if (erro) {
+        return res.status(400).json({ error: erro });
+    }
+
+    try {
+        const pedidos = lerPedidos();
+        const indice = pedidos.findIndex((item) => Number(item.id) === id);
+        if (indice < 0) {
+            return res.status(404).json({ error: "O pedido não foi encontrado." });
+        }
+
+        // Mantém id, data e hora originais
+        const pedidoAtualizado = { ...pedidos[indice], ...pedido };
+        pedidos[indice] = pedidoAtualizado;
+        salvarPedidos(pedidos);
 
         return res.status(200).json({ pedido: pedidoAtualizado });
     } catch (error) {
-        if (caminhoTemporario && fs.existsSync(caminhoTemporario)) {
-            try {
-                fs.unlinkSync(caminhoTemporario);
-            } catch (cleanupError) {
-                console.error("Falha ao remover arquivo temporário:", cleanupError);
-            }
-        }
         console.error("Falha ao atualizar pedido:", error);
         return res.status(500).json({
             error: "Ocorreu um erro ao salvar o pedido. Tente novamente.",
@@ -451,39 +370,22 @@ app.put("/api/pedidos/:loja/:pedido", (req, res) => {
     }
 });
 
-app.delete("/api/pedidos/:loja/:pedido", (req, res) => {
-    const idLoja = Number(req.params.loja);
-    const idPedido = Number(req.params.pedido);
-    const jsonCaminho = caminhosPedidos[idLoja];
+// Excluir pedido
+app.delete("/api/pedidos/:id", (req, res) => {
+    const id = lerIdPedido(req, res);
+    if (id === null) return;
 
-    if (!jsonCaminho || !Number.isInteger(idPedido) || idPedido < 1) {
-        return res.status(400).json({ error: "Loja ou pedido inválido." });
-    }
-
-    let caminhoTemporario;
     try {
-        const pedidos = lerPedidos(idLoja);
-        const indicePedido = pedidos.findIndex(
-            (pedido) => Number(pedido.id) === idPedido,
-        );
-        if (indicePedido < 0) {
+        const pedidos = lerPedidos();
+        const indice = pedidos.findIndex((item) => Number(item.id) === id);
+        if (indice < 0) {
             return res.status(404).json({ error: "O pedido não foi encontrado." });
         }
 
-        pedidos.splice(indicePedido, 1);
-        caminhoTemporario = `${jsonCaminho}.${process.pid}.${Date.now()}.tmp`;
-        fs.writeFileSync(caminhoTemporario, JSON.stringify(pedidos), "utf8");
-        fs.renameSync(caminhoTemporario, jsonCaminho);
-
+        pedidos.splice(indice, 1);
+        salvarPedidos(pedidos);
         return res.status(200).json({ success: true });
     } catch (error) {
-        if (caminhoTemporario && fs.existsSync(caminhoTemporario)) {
-            try {
-                fs.unlinkSync(caminhoTemporario);
-            } catch (cleanupError) {
-                console.error("Falha ao remover arquivo temporário:", cleanupError);
-            }
-        }
         console.error("Falha ao excluir pedido:", error);
         return res.status(500).json({
             error: "Ocorreu um erro ao excluir o pedido. Tente novamente.",
@@ -491,87 +393,60 @@ app.delete("/api/pedidos/:loja/:pedido", (req, res) => {
     }
 });
 
-//rota de datealhes do pedido
+// Qualquer outra rota da API que não exista
+app.use("/api", (req, res) => {
+    res.status(404).json({ error: "Rota não encontrada." });
+});
 
-app.get("/takePedido/:loja/:pedido", (req, res) => {
-    const idLoja = Number(req.params.loja);
-    const idPedido = Number(req.params.pedido);
-    let pedidoCaminho;
-    let pedido;
-    let pedidos;
-    let data;
-
-    switch (idLoja) {
-        case 1:
-            pedidoCaminho = caminhosPedidos[1];
-
-            //trasnformando em array de objetos primeiro
-            pedidos = JSON.parse(fs.readFileSync(pedidoCaminho, "utf8"));
-
-            //procurando o peido específicado
-            for (let i = 0; i < pedidos.length; i++) {
-                if (pedidos[i].id == idPedido) {
-                    pedido = pedidos[i];
-                }
-            }
-
-            data = {
-                pedido: pedido,
-                usr: stores[idLoja - 1]
-            }
-
-            return res.status(200).json(data);
-
-        case 2:
-            pedidoCaminho = caminhosPedidos[2];
-            
-            //trasnformando em array de objetos primeiro
-            pedidos = JSON.parse(fs.readFileSync(pedidoCaminho, "utf8"));
-
-            //procurando o peido específicado
-            for (let i = 0; i < pedidos.length; i++) {
-                if (pedidos[i].id == idPedido) {
-                    pedido = pedidos[i];
-                }
-            }
-
-            data = {
-                pedido: pedido,
-                usr: stores[idLoja - 1]
-            }
-
-            return res.status(200).json(data);
-
-        case 3:
-            pedidoCaminho = caminhosPedidos[3];
-            
-            //trasnformando em array de objetos primeiro
-            pedidos = JSON.parse(fs.readFileSync(pedidoCaminho, "utf8"));
-
-            //procurando o peido específicado
-            for (let i = 0; i < pedidos.length; i++) {
-                if (pedidos[i].id == idPedido) {
-                    pedido = pedidos[i];
-                }
-            }
-
-            data = {
-                pedido: pedido,
-                usr: stores[idLoja - 1]
-            }
-
-            return res.status(200).json(data);
-
-        default:
-            res.sendStatus(401);
+// Erros inesperados (JSON malformado, corpo grande demais...) sempre em JSON,
+// sem expor stack trace ou caminhos de arquivos
+app.use((error, req, res, next) => {
+    if (res.headersSent) {
+        return next(error);
     }
+    if (error.type === "entity.parse.failed") {
+        return res.status(400).json({ error: "O corpo da requisição não é um JSON válido." });
+    }
+    if (error.type === "entity.too.large") {
+        return res.status(413).json({ error: "Os dados enviados são grandes demais." });
+    }
+    console.error("Erro inesperado:", error);
+    return res.status(error.status || 500).json({
+        error: "Ocorreu um erro inesperado no servidor.",
+    });
 });
 
-app.get("/detalhes-pedido/:loja/:pedido", (req, res) => {
-    res.sendFile(path.join(__dirname, "../public/pages/detalhes-pedido.html"))
-});
+/* ================= Servidor ================= */
 
-//Rodando o servidor
-app.listen(3000, () => {
-    console.log("Servidor rodando na porta 3000\nhttp://localhost:3000");
+/*
+ * Escuta apenas na própria máquina (uso local), nos dois endereços de loopback.
+ * No Windows "localhost" costuma resolver primeiro para o IPv6 (::1); escutando
+ * só no 127.0.0.1, o navegador poderia cair em outro programa na mesma porta.
+ */
+const ENDERECOS_LOCAIS = ["127.0.0.1", "::1"];
+let servidoresAtivos = 0;
+
+ENDERECOS_LOCAIS.forEach((endereco) => {
+    const servidor = http.createServer(app);
+
+    servidor.on("error", (error) => {
+        // Máquina sem IPv6: segue só com o 127.0.0.1
+        if (endereco === "::1" && ["EADDRNOTAVAIL", "EAFNOSUPPORT"].includes(error.code)) {
+            return;
+        }
+        if (error.code === "EADDRINUSE") {
+            console.error(
+                `A porta ${PORT} já está em uso. Feche o outro servidor do SellFlow e tente de novo.`,
+            );
+            process.exit(1);
+        }
+        throw error;
+    });
+
+    servidor.listen(PORT, endereco, () => {
+        servidoresAtivos += 1;
+        if (servidoresAtivos === 1) {
+            console.log(`Servidor rodando em http://localhost:${PORT}`);
+        }
+    });
 });

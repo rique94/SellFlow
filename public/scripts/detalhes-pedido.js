@@ -1,6 +1,6 @@
+// URL: /detalhes-pedido/:id
 const routeParts = window.location.pathname.split("/").filter(Boolean);
-const storeId = routeParts[1];
-const orderId = routeParts[2];
+const orderId = routeParts[1];
 const statuses = [
     ["🔴Pagar", "🔴 Pagar"],
     ["🟡Retirar", "🟡 Retirar (pago)"],
@@ -92,9 +92,6 @@ function renderOrder(order, store) {
         "order-notes",
         order.observacoes || order.observacao || "Nenhuma observação informada.",
     );
-    document.getElementById("back-to-orders").href =
-        `/dashboard/${encodeURIComponent(storeId)}`;
-
     const statusElement = document.getElementById("order-status");
     if (isEditing) {
         statusElement.innerHTML = renderStatusSelect(order.status);
@@ -364,7 +361,7 @@ async function saveOrder(event) {
 
     try {
         const response = await fetch(
-            `/api/pedidos/${encodeURIComponent(storeId)}/${encodeURIComponent(orderId)}`,
+            `/api/pedidos/${encodeURIComponent(orderId)}`,
             {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -413,7 +410,7 @@ async function deleteOrder() {
 
     try {
         const response = await fetch(
-            `/api/pedidos/${encodeURIComponent(storeId)}/${encodeURIComponent(orderId)}`,
+            `/api/pedidos/${encodeURIComponent(orderId)}`,
             { method: "DELETE" },
         );
         const result = await response.json();
@@ -421,7 +418,7 @@ async function deleteOrder() {
             throw new Error(result.error || "Não foi possível excluir o pedido.");
         }
 
-        window.location.assign(`/dashboard/${encodeURIComponent(storeId)}`);
+        window.location.assign("/dashboard");
     } catch (error) {
         showFeedback(
             error instanceof Error
@@ -442,41 +439,35 @@ async function deleteOrder() {
 }
 
 async function loadOrderDetails() {
-    const feedback = document.getElementById("details-feedback");
-    const dashboardUrl = storeId
-        ? `/dashboard/${encodeURIComponent(storeId)}`
-        : "/";
-    document.getElementById("back-to-orders").href = dashboardUrl;
-    document.getElementById("link-pedidos").href = dashboardUrl;
-    document.getElementById("link-novo-pedido").href = storeId
-        ? `/novo-pedido/${encodeURIComponent(storeId)}`
-        : "/";
-
-    if (!storeId || !orderId) {
-        showFeedback("Não foi possível identificar a loja e o pedido.", true);
+    if (!orderId) {
+        showFeedback("Não foi possível identificar o pedido.", true);
         return;
     }
 
     try {
-        const response = await fetch(
-            `/api/takeData/${encodeURIComponent(storeId)}`,
-        );
-        if (!response.ok) {
+        const [storeResponse, orderResponse] = await Promise.all([
+            fetch("/api/loja"),
+            fetch(`/api/pedidos/${encodeURIComponent(orderId)}`),
+        ]);
+        if (!storeResponse.ok) {
             throw new Error(
-                `Falha ao carregar os dados da loja (${response.status}).`,
+                `Falha ao carregar os dados da loja (${storeResponse.status}).`,
+            );
+        }
+        if (orderResponse.status === 404) {
+            throw new Error("O pedido solicitado não foi encontrado.");
+        }
+        if (!orderResponse.ok) {
+            throw new Error(
+                `Falha ao carregar o pedido (${orderResponse.status}).`,
             );
         }
 
-        const data = await response.json();
-        const order = (data.pedidos || []).find(
-            (item) => String(item.id) === orderId,
-        );
-
-        if (!order) {
-            throw new Error("O pedido solicitado não foi encontrado.");
-        }
-
-        renderOrder(order, data.usr || {});
+        const [store, order] = await Promise.all([
+            storeResponse.json(),
+            orderResponse.json(),
+        ]);
+        renderOrder(order, store);
     } catch (error) {
         showFeedback(
             error instanceof Error

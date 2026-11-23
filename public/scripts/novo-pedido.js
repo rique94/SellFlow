@@ -5,7 +5,6 @@ const shippingContainer = document.getElementById("shipping-field");
 const shippingInput = document.getElementById("f_frete");
 const feedback = document.getElementById("footer");
 const saveButton = document.querySelector(".main-header-actions button");
-const storeId = window.location.pathname.split("/").filter(Boolean).pop();
 
 let itemCount = itemsContainer.querySelectorAll("[data-product-row]").length;
 
@@ -120,18 +119,13 @@ function formatPhone(value) {
 
 async function pegarDados() {
     const storeName = document.getElementById("nome_loja");
-    const dashboardUrl = storeId
-        ? `/dashboard/${encodeURIComponent(storeId)}`
-        : "/";
-    document.getElementById("link-pedidos").href = dashboardUrl;
-    document.getElementById("link-voltar").href = dashboardUrl;
     try {
-        const response = await fetch(`/api/takeData/${encodeURIComponent(storeId)}`);
+        const response = await fetch("/api/loja");
         if (!response.ok) {
             throw new Error("Não foi possível carregar os dados da loja.");
         }
-        const data = await response.json();
-        storeName.textContent = data.usr.usrName;
+        const loja = await response.json();
+        storeName.textContent = loja.usrName;
     } catch (error) {
         showFeedback(
             error instanceof Error
@@ -148,11 +142,6 @@ async function enviarDados(event) {
     feedback.className = "";
 
     if (!orderForm.reportValidity()) {
-        return;
-    }
-
-    if (!storeId) {
-        showFeedback("Não foi possível identificar a loja do pedido.", "erro");
         return;
     }
 
@@ -184,19 +173,12 @@ async function enviarDados(event) {
         qtdPecas: listaPedidos.length,
         status,
         frete,
-        valorTotal: 0,
-        loja: storeId,
-        data: new Date().toLocaleDateString("pt-BR"),
-        hora: new Date().toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-        }),
     };
 
     saveButton.disabled = true;
     saveButton.textContent = "Salvando...";
     try {
-        const response = await fetch("/api/enviar-pedido", {
+        const response = await fetch("/api/pedidos", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(pedido),

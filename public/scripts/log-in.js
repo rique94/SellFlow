@@ -22,7 +22,7 @@ form.addEventListener("submit", async (event) => {
         }
 
         // enviando os dados para o login do sistema
-        const response = await fetch("http://localhost:3000/api/login", {
+        const response = await fetch("/api/login", {
             method: "POST",
 
             headers: {
@@ -37,12 +37,18 @@ form.addEventListener("submit", async (event) => {
             msg.innerHTML = "";
             msg.className = "";
 
-            const id = await response.json();
-
-            window.location.replace(`http://localhost:3000/dashboard/${id}`);
+            window.location.replace("/dashboard");
         }
         else if (response.status == 401) {
             msg.innerHTML = "Nome, telefone ou senha estão incorretos";
+            msg.className = "mensagem";
+        }
+        else if (response.status == 503) {
+            msg.innerHTML = "Nenhuma loja cadastrada nesta instalação.";
+            msg.className = "mensagem";
+        }
+        else {
+            msg.innerHTML = "Não foi possível entrar. Tente novamente.";
             msg.className = "mensagem";
         }
     }
