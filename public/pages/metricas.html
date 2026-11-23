@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pt-br">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <title>Métricas</title>
+        <link rel="stylesheet" href="/styles/style.css" />
+        <link rel="stylesheet" href="/styles/metricas.css" />
+    </head>
+    <body>
+        <header>
+            <div class="sidebar">
+                <div>
+                    <h1>RB Outlet</h1>
+                    <p id="nome_loja"></p>
+                </div>
+                <nav>
+                    <a href="/dashboard">📄 Pedidos</a>
+                    <a href="/novo-pedido">➕ Novo pedido</a>
+                    <a id="selecionado" aria-current="page">📊 Métricas</a>
+                </nav>
+            </div>
+        </header>
+        <main>
+            <header class="m-cabecalho">
+                <div>
+                    <h2>Métricas</h2>
+                    <p class="m-subtitulo">Quanto e quando você vende</p>
+                </div>
+                <div class="m-periodo" role="group" aria-label="Período">
+                    <button type="button" data-periodo="hoje">Hoje</button>
+                    <button type="button" data-periodo="7">7 dias</button>
+                    <button type="button" data-periodo="30" class="ativo" aria-pressed="true">30 dias</button>
+                    <button type="button" data-periodo="90">90 dias</button>
+                    <button type="button" data-periodo="mes">Este mês</button>
+                </div>
+            </header>
+
+            <p class="m-aviso" id="aviso" role="alert" hidden></p>
+
+            <!-- Resumo: número principal + cartões que também filtram os gráficos -->
+            <section class="m-resumo" aria-label="Resumo do período">
+                <article class="m-cartao m-destaque">
+                    <h3>Faturamento <span class="m-dica">vendas concluídas</span></h3>
+                    <p class="m-valor-destaque" id="hero-valor">—</p>
+                    <p class="m-variacao" id="hero-variacao"></p>
+                    <div class="m-sparkline" id="hero-sparkline" aria-hidden="true"></div>
+                </article>
+
+                <div class="m-indicadores" id="indicadores" role="radiogroup" aria-label="Escolha o que os gráficos mostram">
+                    <!-- preenchido pelo metricas.js -->
+                </div>
+            </section>
+
+            <!-- Gráfico principal -->
+            <section class="m-cartao m-grafico-principal" aria-labelledby="titulo-principal">
+                <div class="m-cartao-topo">
+                    <div>
+                        <h3 id="titulo-principal">Vendas concluídas</h3>
+                        <p class="m-legenda-texto" id="subtitulo-principal">Valor vendido por dia</p>
+                    </div>
+                    <div class="m-controles">
+                        <div class="m-alternar" role="group" aria-label="Mostrar em">
+                            <button type="button" data-medida="valor" class="ativo" aria-pressed="true">Valor (R$)</button>
+                            <button type="button" data-medida="qtd" aria-pressed="false">Quantidade</button>
+                        </div>
+                        <button type="button" class="m-botao-tabela" id="botao-tabela" aria-expanded="false" aria-controls="tabela-principal">
+                            Ver tabela
+                        </button>
+                    </div>
+                </div>
+                <div class="m-grafico" id="grafico-principal"></div>
+                <div class="m-tabela-wrap" id="tabela-principal" hidden></div>
+            </section>
+
+            <!-- Quando vende -->
+            <div class="m-linha-2">
+                <section class="m-cartao" aria-labelledby="titulo-semana">
+                    <div class="m-cartao-topo">
+                        <div>
+                            <h3 id="titulo-semana">Dias que mais vendem</h3>
+                            <p class="m-legenda-texto" id="subtitulo-semana">Soma por dia da semana</p>
+                        </div>
+                    </div>
+                    <div class="m-grafico m-grafico-pequeno" id="grafico-semana"></div>
+                </section>
+                <section class="m-cartao" aria-labelledby="titulo-horario">
+                    <div class="m-cartao-topo">
+                        <div>
+                            <h3 id="titulo-horario">Horários de pico</h3>
+                            <p class="m-legenda-texto" id="subtitulo-horario">Soma por hora do dia</p>
+                        </div>
+                    </div>
+                    <div class="m-grafico m-grafico-pequeno" id="grafico-horario"></div>
+                </section>
+            </div>
+
+            <!-- Situação e produtos -->
+            <div class="m-linha-2">
+                <section class="m-cartao" aria-labelledby="titulo-status">
+                    <div class="m-cartao-topo">
+                        <div>
+                            <h3 id="titulo-status">Pedidos por situação</h3>
+                            <p class="m-legenda-texto">Todos os pedidos do período</p>
+                        </div>
+                    </div>
+                    <ul class="m-barras" id="lista-status"></ul>
+                </section>
+                <section class="m-cartao" aria-labelledby="titulo-produtos">
+                    <div class="m-cartao-topo">
+                        <div>
+                            <h3 id="titulo-produtos">Peças mais vendidas</h3>
+                            <p class="m-legenda-texto" id="subtitulo-produtos">Por quantidade de peças</p>
+                        </div>
+                    </div>
+                    <ol class="m-barras m-ranking" id="lista-produtos"></ol>
+                </section>
+            </div>
+
+            <div class="m-tooltip" id="tooltip" role="status" hidden></div>
+        </main>
+        <script src="/scripts/metricas.js"></script>
+    </body>
+</html>

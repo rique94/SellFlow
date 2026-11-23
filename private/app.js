@@ -324,6 +324,10 @@ app.get("/detalhes-pedido/:id", (req, res) => {
     res.sendFile(path.join(PASTA_PAGINAS, "detalhes-pedido.html"));
 });
 
+app.get("/metricas", (req, res) => {
+    res.sendFile(path.join(PASTA_PAGINAS, "metricas.html"));
+});
+
 app.get("/cadastro", (req, res) => {
     res.sendFile(path.join(PASTA_PAGINAS, "cadastro.html"));
 });

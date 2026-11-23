@@ -1,0 +1,617 @@
+/*
+ * Página de métricas. Carregada depois do style.css (barra lateral e layout base).
+ * Cores dos gráficos em variáveis: uma série só, em azul, validada contra o fundo branco.
+ */
+
+main {
+    --m-fundo: #f7f9fc;
+    --m-cartao: #ffffff;
+    --m-borda: #dce7f5;
+    --m-texto: #0c1d4b;
+    --m-titulo: #0a1947;
+    --m-texto-2: #587098;
+    --m-texto-3: #8395b5;
+    --m-grade: #e9eef6;
+    --m-eixo: #c9d4e5;
+    --m-serie: #2a78d6;
+    --m-serie-clara: #cde2fb;
+    --m-serie-lavagem: rgb(42 120 214 / 10%);
+    --m-acao: #173b80;
+    --m-acao-hover: #102e68;
+    --m-sobe: #006300;
+    --m-desce: #b42318;
+
+    min-height: 100vh;
+    padding: 0 28px 48px;
+    background: var(--m-fundo);
+    color: var(--m-texto);
+    text-align: left;
+    font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+}
+
+main * {
+    font-family: inherit;
+}
+
+/* ---------- Cabeçalho e período ---------- */
+
+.m-cabecalho {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px 24px;
+    padding: 22px 0 20px;
+    border-bottom: 1px solid #dce5f1;
+}
+
+.m-cabecalho h2 {
+    color: var(--m-titulo);
+    font-size: 30px;
+    line-height: 1.2;
+}
+
+.m-subtitulo {
+    margin-top: 4px;
+    color: var(--m-texto-2);
+    font-size: 14px;
+}
+
+.m-periodo,
+.m-alternar {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--m-borda);
+    border-radius: 9px;
+    background: var(--m-cartao);
+}
+
+.m-periodo button,
+.m-alternar button {
+    min-height: 36px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--m-texto-2);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.m-alternar button {
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+}
+
+.m-periodo button:hover,
+.m-alternar button:hover {
+    background: #eef3fa;
+    color: var(--m-titulo);
+}
+
+.m-periodo button.ativo,
+.m-alternar button.ativo {
+    background: var(--m-acao);
+    color: #fff;
+}
+
+button:focus-visible,
+.m-indicador:focus-visible,
+.m-grafico rect:focus-visible {
+    outline: 2px solid #6f9cff;
+    outline-offset: 2px;
+}
+
+.m-aviso {
+    margin: 18px 0 0;
+    padding: 10px 14px;
+    border: 1px solid #f1b7b0;
+    border-radius: 8px;
+    background: #fff5f4;
+    color: #8a1c12;
+    font-size: 13px;
+}
+
+.m-aviso[hidden] {
+    display: none;
+}
+
+/* ---------- Cartões ---------- */
+
+.m-cartao {
+    min-width: 0;
+    padding: 20px;
+    border: 1px solid var(--m-borda);
+    border-radius: 10px;
+    background: var(--m-cartao);
+}
+
+.m-cartao h3 {
+    color: var(--m-titulo);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.m-cartao-topo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px 16px;
+    margin-bottom: 16px;
+}
+
+.m-legenda-texto {
+    margin-top: 3px;
+    color: var(--m-texto-2);
+    font-size: 13px;
+}
+
+.m-dica {
+    color: var(--m-texto-3);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ---------- Resumo ---------- */
+
+.m-resumo {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr);
+    gap: 16px;
+    margin: 18px 0 16px;
+}
+
+.m-destaque {
+    display: flex;
+    flex-direction: column;
+}
+
+.m-destaque h3 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    color: var(--m-texto-2);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.m-valor-destaque {
+    margin-top: 10px;
+    color: var(--m-titulo);
+    font-size: 44px;
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.5px;
+    overflow-wrap: anywhere;
+}
+
+.m-variacao {
+    margin-top: 8px;
+    color: var(--m-texto-2);
+    font-size: 13px;
+}
+
+.m-variacao strong {
+    font-weight: 700;
+}
+
+.m-variacao .sobe {
+    color: var(--m-sobe);
+}
+
+.m-variacao .desce {
+    color: var(--m-desce);
+}
+
+.m-sparkline {
+    flex: 1;
+    min-height: 64px;
+    margin-top: 14px;
+}
+
+.m-sparkline svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.m-indicadores {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.m-indicador {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    padding: 14px 16px;
+    border: 1px solid var(--m-borda);
+    border-radius: 10px;
+    background: var(--m-cartao);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.m-indicador:hover {
+    border-color: #b8c7dc;
+    box-shadow: 0 6px 16px rgb(16 40 92 / 7%);
+}
+
+.m-indicador[aria-checked="true"] {
+    border-color: var(--m-acao);
+    box-shadow: inset 0 0 0 1px var(--m-acao);
+}
+
+.m-indicador-rotulo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--m-texto-2);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.m-indicador-icone {
+    display: inline-grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: #eef3fa;
+    font-size: 14px;
+}
+
+.m-indicador-valor {
+    margin-top: 4px;
+    color: var(--m-titulo);
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.m-indicador-extra {
+    color: var(--m-texto-2);
+    font-size: 12px;
+}
+
+.m-indicador-extra .sobe {
+    color: var(--m-sobe);
+    font-weight: 700;
+}
+
+.m-indicador-extra .desce {
+    color: var(--m-desce);
+    font-weight: 700;
+}
+
+/* ---------- Gráficos ---------- */
+
+.m-grafico-principal {
+    margin-bottom: 16px;
+}
+
+.m-controles {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.m-botao-tabela {
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--m-borda);
+    border-radius: 8px;
+    background: var(--m-cartao);
+    color: var(--m-titulo);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.m-botao-tabela:hover {
+    background: #eef3fa;
+}
+
+.m-grafico {
+    position: relative;
+    height: 260px;
+}
+
+.m-grafico-pequeno {
+    height: 210px;
+}
+
+.m-grafico svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.m-grafico .grade {
+    stroke: var(--m-grade);
+    stroke-width: 1;
+}
+
+.m-grafico .base {
+    stroke: var(--m-eixo);
+    stroke-width: 1;
+}
+
+.m-grafico .marca {
+    fill: var(--m-serie);
+    transition: opacity 0.12s ease;
+}
+
+.m-grafico.tem-foco .marca {
+    opacity: 0.35;
+}
+
+.m-grafico.tem-foco .marca.foco {
+    opacity: 1;
+}
+
+.m-grafico .alvo {
+    fill: transparent;
+    cursor: default;
+}
+
+.m-grafico .alvo:focus {
+    outline: none;
+}
+
+.m-grafico text {
+    fill: var(--m-texto-3);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+
+.m-grafico text.rotulo-valor {
+    fill: var(--m-texto);
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: normal;
+}
+
+.m-vazio {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    color: var(--m-texto-3);
+    font-size: 14px;
+}
+
+.m-linha-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+/* ---------- Tabela do gráfico principal ---------- */
+
+.m-tabela-wrap {
+    max-height: 320px;
+    margin-top: 16px;
+    overflow: auto;
+    border: 1px solid var(--m-borda);
+    border-radius: 8px;
+}
+
+.m-tabela-wrap[hidden] {
+    display: none;
+}
+
+.m-tabela-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.m-tabela-wrap th,
+.m-tabela-wrap td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--m-grade);
+    text-align: left;
+}
+
+.m-tabela-wrap th {
+    position: sticky;
+    top: 0;
+    background: #f3f6fb;
+    color: var(--m-texto-2);
+    font-weight: 700;
+}
+
+.m-tabela-wrap td.num,
+.m-tabela-wrap th.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Barras horizontais (situação e peças) ---------- */
+
+.m-barras {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    list-style: none;
+}
+
+.m-barra {
+    display: grid;
+    grid-template-columns: minmax(110px, 0.9fr) minmax(0, 1.6fr) auto;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+}
+
+.m-barra-nome {
+    overflow: hidden;
+    color: var(--m-texto);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.m-barra-trilho {
+    height: 12px;
+    border-radius: 0 4px 4px 0;
+}
+
+.m-barra-preenchida {
+    height: 100%;
+    min-width: 2px;
+    border-radius: 0 4px 4px 0;
+    background: var(--m-serie);
+}
+
+.m-barra-valor {
+    min-width: 64px;
+    color: var(--m-texto);
+    font-weight: 700;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.m-barra-valor small {
+    display: block;
+    color: var(--m-texto-2);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.m-ranking {
+    counter-reset: ranking;
+}
+
+.m-ranking .m-barra-nome::before {
+    counter-increment: ranking;
+    content: counter(ranking) ". ";
+    color: var(--m-texto-3);
+    font-weight: 700;
+}
+
+/* ---------- Tooltip ---------- */
+
+.m-tooltip {
+    position: fixed;
+    z-index: 50;
+    min-width: 140px;
+    padding: 9px 12px;
+    border: 1px solid rgb(11 11 11 / 10%);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgb(16 40 92 / 14%);
+    color: var(--m-texto);
+    font-size: 13px;
+    pointer-events: none;
+}
+
+.m-tooltip[hidden] {
+    display: none;
+}
+
+.m-tooltip-titulo {
+    margin-bottom: 4px;
+    color: var(--m-texto-2);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.m-tooltip-linha {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+}
+
+.m-tooltip-linha::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--m-serie);
+}
+
+.m-tooltip-extra {
+    margin-top: 2px;
+    color: var(--m-texto-2);
+    font-size: 12px;
+}
+
+/* ---------- Responsivo ---------- */
+
+@media (max-width: 1200px) {
+    .m-resumo {
+        grid-template-columns: 1fr;
+    }
+    .m-sparkline {
+        min-height: 56px;
+        max-height: 70px;
+    }
+}
+
+@media (max-width: 1000px) {
+    main {
+        padding-right: 20px;
+        padding-left: 20px;
+    }
+    .m-linha-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 650px) {
+    main {
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+    .m-cabecalho h2 {
+        font-size: 25px;
+    }
+    .m-indicadores {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .m-valor-destaque {
+        font-size: 36px;
+    }
+    .m-cartao {
+        padding: 16px;
+    }
+    .m-barra {
+        grid-template-columns: minmax(90px, 1fr) minmax(0, 1fr) auto;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 400px) {
+    .m-indicador-valor {
+        font-size: 22px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .m-grafico .marca,
+    .m-indicador,
+    .m-periodo button,
+    .m-alternar button {
+        transition: none;
+    }
+}
