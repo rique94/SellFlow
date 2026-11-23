@@ -323,6 +323,49 @@ main .valor-pedido {
     font-weight: 700;
 }
 
+/* Troca de peça e prazo de arquivamento */
+main .card-ciclo {
+    margin: -4px 0 14px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+main .card-ciclo.ciclo-normal {
+    background: #f4f7fc;
+    color: #587098;
+}
+
+main .card-ciclo.ciclo-troca {
+    background: #fff6e8;
+    color: #8a4b00;
+}
+
+main .card-ciclo.ciclo-arquivado {
+    background: #f3f3f6;
+    color: #5b5f73;
+}
+
+main .cards-arquivado {
+    border-style: dashed;
+}
+
+main .aviso-arquivo {
+    margin: 0 0 18px;
+    padding: 12px 14px;
+    border: 1px solid #dce5f1;
+    border-radius: 8px;
+    background: #f7f9fc;
+    color: #27416f;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+main .aviso-arquivo[hidden] {
+    display: none;
+}
+
 main .card-content-detalhes {
     margin-top: auto;
 }

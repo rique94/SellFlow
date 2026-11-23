@@ -198,6 +198,33 @@
                     </section>
                 </form>
 
+                <section class="details-card trocas-card" aria-labelledby="trocas-title">
+                    <div class="card-heading">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 9h13l-3-3M20 15H7l3 3" />
+                        </svg>
+                        <h3 id="trocas-title">Trocas de peça</h3>
+                    </div>
+                    <p class="ciclo-info" id="ciclo-info">Carregando...</p>
+                    <ul class="trocas-lista" id="trocas-lista"></ul>
+                    <form class="troca-form" id="troca-form">
+                        <label for="troca-descricao">Registrar troca</label>
+                        <div class="troca-form-linha">
+                            <input
+                                class="edit-field"
+                                id="troca-descricao"
+                                type="text"
+                                maxlength="300"
+                                required
+                                placeholder="Ex.: trocou a camiseta M pela G"
+                            />
+                            <button class="action-button action-button-primary" id="troca-salvar" type="submit">
+                                Registrar troca
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
                 <p class="details-feedback" id="details-feedback" role="status" hidden></p>
             </div>
         </main>

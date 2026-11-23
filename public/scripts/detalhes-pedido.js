@@ -110,8 +110,10 @@ function renderOrder(order, store) {
 
     renderItems();
     renderSummary();
+    renderTrocas(order);
 
     document.getElementById("edit-order-form").classList.toggle("is-editing", isEditing);
+    document.getElementById("troca-form").hidden = isEditing;
     document.getElementById("edit-order").hidden = isEditing;
     document.getElementById("save-order").hidden = !isEditing;
     document.getElementById("cancel-edit").hidden = !isEditing;
@@ -119,6 +121,90 @@ function renderOrder(order, store) {
     document.getElementById("delete-order").hidden = isEditing;
     document.getElementById("add-order-item").hidden = !isEditing;
     document.querySelector(".items-table th.edit-only").hidden = !isEditing;
+}
+
+/* ---------------- Trocas de peça e prazo de arquivamento (regras em private/ciclo.js) ---------------- */
+
+const formatDate = (iso) => new Date(iso).toLocaleDateString("pt-BR");
+const daysText = (days) => (days <= 0 ? "hoje" : days === 1 ? "em 1 dia" : `em ${days} dias`);
+
+function cycleText(order) {
+    const cycle = order.ciclo || {};
+    const exchanges = cycle.trocas
+        ? `Houve ${cycle.trocas} troca${cycle.trocas > 1 ? "s" : ""} de peça.`
+        : "Nenhuma troca de peça registrada.";
+
+    if (cycle.fase === "arquivado") {
+        return `🗄 Este pedido está no arquivo de finalizados desde ${formatDate(cycle.arquivadoEm)}. ${exchanges} ` +
+            `Ele será apagado ${daysText(cycle.diasRestantes)} (${formatDate(cycle.apagaEm)}). ` +
+            "Registrar uma troca ou editar o pedido o devolve para a lista.";
+    }
+    if (cycle.fase === "concluido") {
+        return `${exchanges} Se não houver troca nem mudança, o pedido vai para o arquivo de finalizados ` +
+            `${daysText(cycle.diasRestantes)} (${formatDate(cycle.arquivaEm)}).`;
+    }
+    return `${exchanges} O prazo de 30 dias para o arquivo só começa quando o pedido for concluído (Finalizado ou Despachado).`;
+}
+
+function renderTrocas(order) {
+    setText("ciclo-info", cycleText(order));
+    document.getElementById("ciclo-info").classList.toggle("ciclo-arquivado", order.ciclo?.fase === "arquivado");
+
+    const list = document.getElementById("trocas-lista");
+    const exchanges = Array.isArray(order.trocas) ? order.trocas : [];
+    list.hidden = exchanges.length === 0;
+    list.innerHTML = exchanges
+        .slice()
+        .reverse()
+        .map(
+            (exchange) => `<li>
+                <span class="troca-data">${escapeHtml([exchange.data, exchange.hora].filter(Boolean).join(" às "))}</span>
+                <span class="troca-descricao">${escapeHtml(exchange.descricao || "")}</span>
+            </li>`,
+        )
+        .join("");
+}
+
+async function registerExchange(event) {
+    event.preventDefault();
+    if (!currentOrder || isEditing || isSaving) {
+        return;
+    }
+    const input = document.getElementById("troca-descricao");
+    const description = input.value.trim();
+    if (!description) {
+        input.focus();
+        return;
+    }
+
+    isSaving = true;
+    const button = document.getElementById("troca-salvar");
+    button.disabled = true;
+    button.textContent = "Registrando...";
+    try {
+        const response = await fetch(`/api/pedidos/${encodeURIComponent(orderId)}/trocas`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ descricao: description }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || "Não foi possível registrar a troca.");
+        }
+        input.value = "";
+        renderOrder(result.pedido, currentStore);
+        showFeedback(
+            result.restaurado
+                ? "Troca registrada. O pedido saiu do arquivo de finalizados e voltou para a lista."
+                : "Troca registrada. O prazo de 30 dias recomeçou.",
+        );
+    } catch (error) {
+        showFeedback(error instanceof Error ? error.message : "Não foi possível registrar a troca.", true);
+    } finally {
+        isSaving = false;
+        button.disabled = false;
+        button.textContent = "Registrar troca";
+    }
 }
 
 function renderStatusSelect(selectedStatus) {
@@ -414,7 +500,11 @@ async function saveOrder(event) {
         isEditing = false;
         originalOrder = null;
         renderOrder(result.pedido, currentStore);
-        showFeedback("Pedido atualizado com sucesso.");
+        showFeedback(
+            result.restaurado
+                ? "Pedido atualizado. Ele saiu do arquivo de finalizados e voltou para a lista."
+                : "Pedido atualizado com sucesso.",
+        );
     } catch (error) {
         showFeedback(
             error instanceof Error
@@ -532,6 +622,7 @@ document.getElementById("cancel-edit").addEventListener("click", cancelEditing);
 document.getElementById("edit-order-form").addEventListener("submit", saveOrder);
 document.getElementById("add-order-item").addEventListener("click", addItem);
 document.getElementById("delete-order").addEventListener("click", deleteOrder);
+document.getElementById("troca-form").addEventListener("submit", registerExchange);
 /* ---------------- Impressão ---------------- */
 
 const printButton = document.getElementById("print-order");

@@ -41,10 +41,13 @@ SellFlow/
 ├── private/
 │   ├── data/
 │   │   ├── loja.json        (criado pelo cadastro, fora do git)
-│   │   └── pedidos.json     (criado automaticamente, fora do git)
+│   │   ├── pedidos.json     (criado automaticamente, fora do git)
+│   │   └── finalizados.json (pedidos arquivados, fora do git)
 │   │
 │   ├── app.js
-│   └── cadastro.js
+│   ├── cadastro.js
+│   ├── ciclo.js             (regras de arquivamento dos pedidos)
+│   └── seguranca.js
 │
 ├── public/
 │   ├── images/
@@ -108,6 +111,17 @@ Inicie o servidor:
 ```bash
 node .
 ```
+
+## Arquivo de finalizados
+
+O sistema verifica os pedidos sozinho (ao iniciar, de hora em hora e sempre que a lista é aberta):
+
+1. Um pedido concluído (Finalizado ou Despachado) fica na lista por 30 dias desde a última movimentação: conclusão, troca de peça ou edição.
+2. Se passar 30 dias sem troca nem mudança, ele vai para `finalizados.json`, guardado por precaução (botão **Arquivados** na lista de pedidos).
+3. No arquivo, ele fica mais 30 dias e depois é apagado de vez.
+4. Registrar uma troca ou editar um pedido arquivado o devolve para a lista e o prazo recomeça.
+
+Pedidos em andamento (Pagar, Retirar, Despachar...) nunca são arquivados. As trocas são registradas na tela de detalhes do pedido.
 
 ## API
 

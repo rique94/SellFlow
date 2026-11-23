@@ -417,6 +417,90 @@ main .details-feedback[hidden] {
     display: none;
 }
 
+/* ---------- Trocas de peça ---------- */
+
+main .trocas-card {
+    margin-top: 18px;
+}
+
+main .ciclo-info {
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: #f4f7fc;
+    color: #27416f;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+main .ciclo-info.ciclo-arquivado {
+    background: #f3f3f6;
+    color: #4b4f63;
+}
+
+main .trocas-lista {
+    display: grid;
+    gap: 8px;
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+main .trocas-lista[hidden],
+main .troca-form[hidden] {
+    display: none;
+}
+
+main .trocas-lista li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    padding: 10px 12px;
+    border: 1px solid #f1dcb8;
+    border-radius: 6px;
+    background: #fffaf1;
+    font-size: 14px;
+}
+
+main .troca-data {
+    color: #8a4b00;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+main .troca-descricao {
+    min-width: 0;
+    color: #0d204f;
+    overflow-wrap: anywhere;
+}
+
+main .troca-form {
+    margin-top: 16px;
+}
+
+main .troca-form label {
+    display: block;
+    margin-bottom: 6px;
+    color: #27416f;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+main .troca-form-linha {
+    display: flex;
+    gap: 10px;
+}
+
+main .troca-form-linha .edit-field {
+    flex: 1;
+}
+
+@media (max-width: 650px) {
+    main .troca-form-linha {
+        flex-direction: column;
+    }
+}
+
 @media (max-width: 900px) {
     main {
         padding-right: 18px;

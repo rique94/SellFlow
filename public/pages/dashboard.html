@@ -124,6 +124,16 @@
                     >
                         Despachados
                     </button>
+                    <button
+                        class="botao-filtro-pedido"
+                        id="filtro-arquivados"
+                        type="button"
+                        aria-pressed="false"
+                        data-acao="arquivados"
+                        title="Pedidos concluídos há mais de 30 dias sem troca"
+                    >
+                        🗄 Arquivados
+                    </button>
                     <div class="seletor-status-pedidos">
                         <button
                         class="botao-filtro-pedido botao-abre-status"
@@ -194,6 +204,11 @@
                     </div>
                 </div>
             </div>
+            <p class="aviso-arquivo" id="aviso-arquivo" hidden>
+                🗄 <strong>Arquivo de finalizados:</strong> pedidos concluídos que passaram 30 dias sem troca de
+                peça nem mudança. Eles ficam guardados aqui por mais 30 dias e depois são apagados. Registrar uma
+                troca ou editar o pedido o devolve para a lista.
+            </p>
             <div class="container-cards" id="linhaCard"></div>
         </main>
     </body>

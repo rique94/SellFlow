@@ -22,6 +22,7 @@ const {
     reservarLogin,
     liberarLogin,
 } = require("./seguranca");
+const { infoCiclo, verificarPrazos } = require("./ciclo");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -38,6 +39,8 @@ hashSenha(require("crypto").randomBytes(16).toString("hex")).then((hash) => (has
 const PASTA_DADOS = path.join(__dirname, "data");
 const CAMINHO_LOJA = path.join(PASTA_DADOS, "loja.json");
 const CAMINHO_PEDIDOS = path.join(PASTA_DADOS, "pedidos.json");
+// Pedidos concluídos há mais de 30 dias sem troca nem mudança (ver ciclo.js)
+const CAMINHO_FINALIZADOS = path.join(PASTA_DADOS, "finalizados.json");
 const PASTA_PAGINAS = path.join(__dirname, "../public/pages");
 
 const STATUSES_PERMITIDOS = [
@@ -94,33 +97,39 @@ function mensagemArquivoPedidos(error) {
     return `${error.message} Corrija ou restaure o arquivo em private/data antes de continuar.`;
 }
 
-function lerPedidos() {
-    if (!fs.existsSync(CAMINHO_PEDIDOS)) {
+function lerLista(caminho) {
+    if (!fs.existsSync(caminho)) {
         return [];
     }
-    const conteudo = fs.readFileSync(CAMINHO_PEDIDOS, "utf8");
+    const conteudo = fs.readFileSync(caminho, "utf8");
     // Arquivo vazio = nenhum pedido ainda
     if (!conteudo.trim()) {
         return [];
     }
+    const nome = path.basename(caminho);
     let pedidos;
     try {
         pedidos = JSON.parse(conteudo);
     } catch {
-        throw new ErroArquivoPedidos("O arquivo pedidos.json está com um JSON inválido.");
+        throw new ErroArquivoPedidos(`O arquivo ${nome} está com um JSON inválido.`);
     }
     if (!Array.isArray(pedidos)) {
-        throw new ErroArquivoPedidos("O arquivo pedidos.json não contém uma lista de pedidos.");
+        throw new ErroArquivoPedidos(`O arquivo ${nome} não contém uma lista de pedidos.`);
     }
     return pedidos;
 }
 
+const lerPedidos = () => lerLista(CAMINHO_PEDIDOS);
+const lerArquivados = () => lerLista(CAMINHO_FINALIZADOS);
+const salvarPedidos = (pedidos) => salvarLista(CAMINHO_PEDIDOS, pedidos);
+const salvarArquivados = (pedidos) => salvarLista(CAMINHO_FINALIZADOS, pedidos);
+
 // Escrita atômica: grava num temporário e renomeia, para não corromper o arquivo
-function salvarPedidos(pedidos) {
-    const temporario = `${CAMINHO_PEDIDOS}.${process.pid}.${Date.now()}.tmp`;
+function salvarLista(caminho, pedidos) {
+    const temporario = `${caminho}.${process.pid}.${Date.now()}.tmp`;
     try {
         fs.writeFileSync(temporario, JSON.stringify(pedidos, null, 2), "utf8");
-        fs.renameSync(temporario, CAMINHO_PEDIDOS);
+        fs.renameSync(temporario, caminho);
     } catch (error) {
         if (fs.existsSync(temporario)) {
             try {
@@ -323,6 +332,70 @@ function lerIdPedido(req, res) {
         return null;
     }
     return id;
+}
+
+/* ================= Arquivo de finalizados (regras em ciclo.js) ================= */
+
+// Arquiva os concluídos parados há 30 dias e apaga os que estão no arquivo há 30 dias
+function manutencaoPedidos(agora = new Date()) {
+    const resultado = verificarPrazos(lerPedidos(), lerArquivados(), agora);
+    if (!resultado.mudou) {
+        return resultado;
+    }
+    // Primeiro grava o arquivo, depois tira da lista: se algo falhar no meio, o pedido
+    // fica nos dois lugares (e vale a cópia da lista), nunca em nenhum
+    salvarArquivados(resultado.arquivados);
+    salvarPedidos(resultado.pedidos);
+    if (resultado.arquivadosAgora) {
+        console.log(`${resultado.arquivadosAgora} pedido(s) concluído(s) sem troca há 30 dias foram para finalizados.json.`);
+    }
+    if (resultado.apagados) {
+        console.log(`${resultado.apagados} pedido(s) arquivado(s) há 30 dias foram apagados.`);
+    }
+    return resultado;
+}
+
+const comCiclo = (pedido, arquivado) => ({ ...pedido, ciclo: infoCiclo(pedido, arquivado) });
+
+// Procura o pedido na lista e, se não achar, no arquivo de finalizados
+function localizarPedido(id) {
+    const pedidos = lerPedidos();
+    const indice = pedidos.findIndex((item) => Number(item.id) === id);
+    if (indice >= 0) {
+        return { pedidos, indice, arquivado: false };
+    }
+    const arquivados = lerArquivados();
+    const indiceArquivo = arquivados.findIndex((item) => Number(item.id) === id);
+    if (indiceArquivo >= 0) {
+        return { pedidos, arquivados, indice: indiceArquivo, arquivado: true };
+    }
+    return null;
+}
+
+// Grava um pedido alterado. Se estava arquivado, volta para a lista (o prazo de 30 dias recomeça).
+function gravarPedidoAlterado(local, pedido) {
+    if (!local.arquivado) {
+        local.pedidos[local.indice] = pedido;
+        salvarPedidos(local.pedidos);
+        return pedido;
+    }
+    const { arquivadoEm, ...restaurado } = pedido;
+    // Volta na posição do id, para a ordem de criação da lista continuar certa
+    const posicao = local.pedidos.findIndex((item) => Number(item.id) > Number(restaurado.id));
+    local.pedidos.splice(posicao < 0 ? local.pedidos.length : posicao, 0, restaurado);
+    // Mesma ordem segura da manutenção: primeiro grava na lista, depois tira do arquivo
+    salvarPedidos(local.pedidos);
+    local.arquivados.splice(local.indice, 1);
+    salvarArquivados(local.arquivados);
+    return restaurado;
+}
+
+function respostaErroPedidos(res, error, mensagem) {
+    if (error instanceof ErroArquivoPedidos) {
+        return res.status(500).json({ error: mensagemArquivoPedidos(error) });
+    }
+    console.error(`${mensagem}:`, error);
+    return res.status(500).json({ error: `${mensagem}. Tente novamente.` });
 }
 
 /* ================= Middlewares ================= */
@@ -535,21 +608,29 @@ app.get("/api/loja", (req, res) => {
     res.json(lojaPublica(loja));
 });
 
-// Lista de pedidos
+// Lista de pedidos (antes, aplica os prazos de arquivamento)
 app.get("/api/pedidos", (req, res) => {
-    res.json(lerPedidos());
+    manutencaoPedidos();
+    res.json(lerPedidos().map((pedido) => comCiclo(pedido, false)));
 });
 
-// Um pedido
+// Pedidos guardados em finalizados.json (concluídos há mais de 30 dias sem troca nem mudança)
+app.get("/api/pedidos/arquivados", (req, res) => {
+    manutencaoPedidos();
+    res.json(lerArquivados().map((pedido) => comCiclo(pedido, true)));
+});
+
+// Um pedido (da lista ou do arquivo)
 app.get("/api/pedidos/:id", (req, res) => {
     const id = lerIdPedido(req, res);
     if (id === null) return;
 
-    const pedido = lerPedidos().find((item) => Number(item.id) === id);
-    if (!pedido) {
+    const local = localizarPedido(id);
+    if (!local) {
         return res.status(404).json({ error: "O pedido não foi encontrado." });
     }
-    res.json(pedido);
+    const lista = local.arquivado ? local.arquivados : local.pedidos;
+    res.json(comCiclo(lista[local.indice], local.arquivado));
 });
 
 // Criar pedido
@@ -561,7 +642,8 @@ app.post("/api/pedidos", (req, res) => {
 
     try {
         const pedidos = lerPedidos();
-        const novoId = proximoIdPedido(pedidos);
+        // Ids dos arquivados continuam reservados (o pedido pode voltar para a lista)
+        const novoId = proximoIdPedido([...lerArquivados(), ...pedidos]);
         if (novoId === null) {
             return res.status(409).json({
                 error: `Limite de ${ID_MAXIMO} pedidos atingido. Exclua pedidos antigos para criar novos.`,
@@ -577,19 +659,13 @@ app.post("/api/pedidos", (req, res) => {
 
         pedidos.push(pedidoCriado);
         salvarPedidos(pedidos);
-        return res.status(201).json({ pedido: pedidoCriado });
+        return res.status(201).json({ pedido: comCiclo(pedidoCriado, false) });
     } catch (error) {
-        if (error instanceof ErroArquivoPedidos) {
-            return res.status(500).json({ error: mensagemArquivoPedidos(error) });
-        }
-        console.error("Falha ao criar pedido:", error);
-        return res.status(500).json({
-            error: "Ocorreu um erro ao salvar o pedido. Tente novamente.",
-        });
+        return respostaErroPedidos(res, error, "Ocorreu um erro ao salvar o pedido");
     }
 });
 
-// Editar pedido
+// Editar pedido (conta como mudança: o prazo de 30 dias recomeça; se estava arquivado, volta para a lista)
 app.put("/api/pedidos/:id", (req, res) => {
     const id = lerIdPedido(req, res);
     if (id === null) return;
@@ -600,15 +676,14 @@ app.put("/api/pedidos/:id", (req, res) => {
     }
 
     try {
-        const pedidos = lerPedidos();
-        const indice = pedidos.findIndex((item) => Number(item.id) === id);
-        if (indice < 0) {
+        const local = localizarPedido(id);
+        if (!local) {
             return res.status(404).json({ error: "O pedido não foi encontrado." });
         }
 
-        // Mantém id, data e hora originais
-        const anterior = pedidos[indice];
-        const pedidoAtualizado = { ...anterior, ...pedido };
+        // Mantém id, data, hora e trocas originais
+        const anterior = (local.arquivado ? local.arquivados : local.pedidos)[local.indice];
+        const pedidoAtualizado = { ...anterior, ...pedido, atualizadoEm: new Date().toISOString() };
 
         // Data de conclusão: grava ao passar para Finalizado/Despachado, mantém entre os dois
         // (Despachado -> Finalizado não muda a data) e apaga se voltar para um status pendente
@@ -620,44 +695,64 @@ app.put("/api/pedidos/:id", (req, res) => {
             delete pedidoAtualizado.dataConclusao;
             delete pedidoAtualizado.horaConclusao;
         }
-        pedidos[indice] = pedidoAtualizado;
-        salvarPedidos(pedidos);
 
-        return res.status(200).json({ pedido: pedidoAtualizado });
+        const salvo = gravarPedidoAlterado(local, pedidoAtualizado);
+        return res.status(200).json({ pedido: comCiclo(salvo, false), restaurado: local.arquivado });
     } catch (error) {
-        if (error instanceof ErroArquivoPedidos) {
-            return res.status(500).json({ error: mensagemArquivoPedidos(error) });
-        }
-        console.error("Falha ao atualizar pedido:", error);
-        return res.status(500).json({
-            error: "Ocorreu um erro ao salvar o pedido. Tente novamente.",
-        });
+        return respostaErroPedidos(res, error, "Ocorreu um erro ao salvar o pedido");
     }
 });
 
-// Excluir pedido
+// Registrar troca de peça (o prazo de 30 dias recomeça; se estava arquivado, volta para a lista)
+app.post("/api/pedidos/:id/trocas", (req, res) => {
+    const id = lerIdPedido(req, res);
+    if (id === null) return;
+
+    const descricao = typeof req.body?.descricao === "string" ? req.body.descricao.trim() : "";
+    if (!descricao || descricao.length > 300) {
+        return res.status(400).json({ error: "Descreva a troca (até 300 caracteres)." });
+    }
+
+    try {
+        const local = localizarPedido(id);
+        if (!local) {
+            return res.status(404).json({ error: "O pedido não foi encontrado." });
+        }
+        const anterior = (local.arquivado ? local.arquivados : local.pedidos)[local.indice];
+        const trocas = Array.isArray(anterior.trocas) ? anterior.trocas : [];
+        if (trocas.length >= 50) {
+            return res.status(409).json({ error: "Este pedido já tem o máximo de 50 trocas registradas." });
+        }
+        const { data, hora } = momentoAtual();
+        const troca = { em: new Date().toISOString(), data, hora, descricao };
+
+        const salvo = gravarPedidoAlterado(local, { ...anterior, trocas: [...trocas, troca] });
+        return res.status(201).json({ pedido: comCiclo(salvo, false), restaurado: local.arquivado });
+    } catch (error) {
+        return respostaErroPedidos(res, error, "Ocorreu um erro ao registrar a troca");
+    }
+});
+
+// Excluir pedido (da lista ou do arquivo)
 app.delete("/api/pedidos/:id", (req, res) => {
     const id = lerIdPedido(req, res);
     if (id === null) return;
 
     try {
-        const pedidos = lerPedidos();
-        const indice = pedidos.findIndex((item) => Number(item.id) === id);
-        if (indice < 0) {
+        const local = localizarPedido(id);
+        if (!local) {
             return res.status(404).json({ error: "O pedido não foi encontrado." });
         }
-
-        pedidos.splice(indice, 1);
-        salvarPedidos(pedidos);
+        if (local.arquivado) {
+            local.arquivados.splice(local.indice, 1);
+            salvarArquivados(local.arquivados);
+        } else {
+            local.pedidos.splice(local.indice, 1);
+            salvarPedidos(local.pedidos);
+        }
         return res.status(200).json({ success: true });
     } catch (error) {
-        if (error instanceof ErroArquivoPedidos) {
-            return res.status(500).json({ error: mensagemArquivoPedidos(error) });
-        }
-        console.error("Falha ao excluir pedido:", error);
-        return res.status(500).json({
-            error: "Ocorreu um erro ao excluir o pedido. Tente novamente.",
-        });
+        return respostaErroPedidos(res, error, "Ocorreu um erro ao excluir o pedido");
     }
 });
 
@@ -721,3 +816,14 @@ ENDERECOS_LOCAIS.forEach((endereco) => {
         }
     });
 });
+
+// Confere os prazos de arquivamento ao iniciar e de hora em hora (também roda a cada listagem)
+function manutencaoAgendada() {
+    try {
+        manutencaoPedidos();
+    } catch (error) {
+        console.error("Não foi possível verificar os prazos dos pedidos:", error.message);
+    }
+}
+manutencaoAgendada();
+setInterval(manutencaoAgendada, 60 * 60 * 1000).unref();

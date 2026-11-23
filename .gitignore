@@ -3,6 +3,7 @@ node_modules/
 # Dados locais da loja (cada instalação tem os seus)
 private/data/loja.json
 private/data/pedidos.json
+private/data/finalizados.json
 private/data/*.tmp
 private/data/*.invalido-*
 

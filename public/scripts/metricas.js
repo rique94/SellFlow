@@ -540,7 +540,12 @@ function mostrarAviso(texto) {
 
 async function carregarDados() {
     try {
-        const [respostaLoja, respostaPedidos] = await Promise.all([fetch("/api/loja"), fetch("/api/pedidos")]);
+        // Os arquivados (concluídos há mais de 30 dias) também contam nas métricas
+        const [respostaLoja, respostaPedidos, respostaArquivados] = await Promise.all([
+            fetch("/api/loja"),
+            fetch("/api/pedidos"),
+            fetch("/api/pedidos/arquivados"),
+        ]);
         // Sem loja cadastrada: volta para a tela de entrada
         if (respostaLoja.status === 503 || respostaPedidos.status === 503) {
             window.location.replace("/");
@@ -553,7 +558,9 @@ async function carregarDados() {
         if (!respostaPedidos.ok || !Array.isArray(corpo)) {
             throw new Error(corpo?.error || "Não foi possível carregar os pedidos.");
         }
-        pedidos = corpo.map((p) => {
+        const corpoArquivados = await respostaArquivados.json().catch(() => null);
+        const arquivados = respostaArquivados.ok && Array.isArray(corpoArquivados) ? corpoArquivados : [];
+        pedidos = [...corpo, ...arquivados].map((p) => {
             const criacao = dataDoPedido(p);
             const conclusao = p.dataConclusao ? dataDoPedido({ data: p.dataConclusao, hora: p.horaConclusao }) : null;
             return { ...p, _data: criacao, _dataConclusao: conclusao || criacao };
