@@ -12,6 +12,8 @@ const METRICAS = {
         icone: "✅",
         filtro: (p) => p.status === "✅Finalizado" || p.status === "🟦Despachado",
         sobeEhBom: true,
+        // Conta no dia em que a venda foi concluída (pedidos antigos sem essa data usam a de criação)
+        campoData: "_dataConclusao",
     },
     totais: {
         nome: "Vendas totais",
@@ -116,8 +118,14 @@ function intervalo(periodo, agora = new Date()) {
     return { inicio, fim: amanha, antInicio: somarDias(inicio, -dias), antFim: inicio, grupo: dias > 31 ? "semana" : "dia", nomeAnterior: `${dias} dias anteriores` };
 }
 
-function pedidosEntre(inicio, fim) {
-    return pedidos.filter((p) => p._data && p._data >= inicio && p._data < fim);
+// campo: "_data" (criação do pedido) ou "_dataConclusao" (quando virou venda concluída)
+function pedidosEntre(inicio, fim, campo = "_data") {
+    return pedidos.filter((p) => p[campo] && p[campo] >= inicio && p[campo] < fim);
+}
+
+// Pedidos de uma métrica no período, pela data que faz sentido para ela
+function daMetricaEntre(def, inicio, fim) {
+    return pedidosEntre(inicio, fim, def.campoData || "_data").filter(def.filtro);
 }
 
 function somar(lista, medida) {
@@ -125,11 +133,11 @@ function somar(lista, medida) {
 }
 
 /* Divide o período em barras (horas, dias ou semanas) */
-function agrupar(lista, faixa, medida) {
+function agrupar(lista, faixa, medida, campo = "_data") {
     const grupos = [];
     if (faixa.grupo === "hora") {
         for (let h = 0; h < 24; h++) grupos.push({ rotulo: `${h}h`, dica: `${h}h às ${h + 1}h`, inicio: h, valor: 0, reais: 0, pedidos: 0 });
-        lista.forEach((p) => somarNoGrupo(grupos[p._data.getHours()], p, medida));
+        lista.forEach((p) => somarNoGrupo(grupos[p[campo].getHours()], p, medida));
         return grupos;
     }
     const passo = faixa.grupo === "semana" ? 7 : 1;
@@ -147,7 +155,7 @@ function agrupar(lista, faixa, medida) {
         });
     }
     lista.forEach((p) => {
-        const g = grupos.find((x) => p._data >= x.inicio && p._data < x.fim);
+        const g = grupos.find((x) => p[campo] >= x.inicio && p[campo] < x.fim);
         if (g) somarNoGrupo(g, p, medida);
     });
     return grupos;
@@ -364,24 +372,23 @@ function nomeGrupo(faixa) {
 function atualizar() {
     const faixa = intervalo(estado.periodo);
     const doPeriodo = pedidosEntre(faixa.inicio, faixa.fim);
-    const doAnterior = pedidosEntre(faixa.antInicio, faixa.antFim);
     const metrica = METRICAS[estado.metrica];
 
     /* Número principal: faturamento das vendas concluídas */
-    const concluidas = doPeriodo.filter(METRICAS.concluidas.filtro);
-    const concluidasAnt = doAnterior.filter(METRICAS.concluidas.filtro);
+    const concluidas = daMetricaEntre(METRICAS.concluidas, faixa.inicio, faixa.fim);
+    const concluidasAnt = daMetricaEntre(METRICAS.concluidas, faixa.antInicio, faixa.antFim);
     const faturamento = somar(concluidas, "valor");
     document.getElementById("hero-valor").textContent = moeda.format(faturamento);
     const v = variacao(faturamento, somar(concluidasAnt, "valor"));
     document.getElementById("hero-variacao").innerHTML = v === null
         ? "Sem dados do período anterior para comparar"
         : `${textoVariacao(v, true)} em relação a ${faixa.nomeAnterior}`;
-    desenharSparkline(document.getElementById("hero-sparkline"), agrupar(concluidas, faixa, "valor").map((g) => g.valor));
+    desenharSparkline(document.getElementById("hero-sparkline"), agrupar(concluidas, faixa, "valor", "_dataConclusao").map((g) => g.valor));
 
     /* Indicadores (cada um também escolhe o que os gráficos mostram) */
     const indicadores = Object.entries(METRICAS).map(([chave, def]) => {
-        const atual = doPeriodo.filter(def.filtro);
-        const anterior = doAnterior.filter(def.filtro);
+        const atual = daMetricaEntre(def, faixa.inicio, faixa.fim);
+        const anterior = daMetricaEntre(def, faixa.antInicio, faixa.antFim);
         const varQtd = variacao(atual.length, anterior.length);
         return `
             <button type="button" class="m-indicador" role="radio" aria-checked="${chave === estado.metrica}" data-metrica="${chave}">
@@ -402,8 +409,9 @@ function atualizar() {
     document.getElementById("indicadores").innerHTML = indicadores.join("");
 
     /* Gráfico principal */
-    const daMetrica = doPeriodo.filter(metrica.filtro);
-    const grupos = agrupar(daMetrica, faixa, estado.medida);
+    const campo = metrica.campoData || "_data";
+    const daMetrica = daMetricaEntre(metrica, faixa.inicio, faixa.fim);
+    const grupos = agrupar(daMetrica, faixa, estado.medida, campo);
     const unidade = estado.medida === "valor" ? "Valor (R$)" : "Quantidade de pedidos";
     document.getElementById("titulo-principal").textContent = metrica.nome;
     document.getElementById("subtitulo-principal").textContent = `${unidade} por ${nomeGrupo(faixa)}`;
@@ -416,11 +424,11 @@ function atualizar() {
     /* Dias da semana e horários */
     const sufixo = `${estado.medida === "valor" ? "valor (R$)" : "pedidos"} · ${metrica.nome.toLowerCase()}`;
     const semana = ORDEM_SEMANA.map((dia) => ({ rotulo: DIAS_SEMANA[dia], dica: DIAS_SEMANA_LONGO[dia], valor: 0, reais: 0, pedidos: 0, dia }));
-    daMetrica.forEach((p) => somarNoGrupo(semana.find((s) => s.dia === p._data.getDay()), p, estado.medida));
+    daMetrica.forEach((p) => somarNoGrupo(semana.find((s) => s.dia === p[campo].getDay()), p, estado.medida));
     document.getElementById("subtitulo-semana").textContent = `Soma por dia da semana — ${sufixo}`;
     desenharColunas(document.getElementById("grafico-semana"), semana, { medida: estado.medida, descricao: "Vendas por dia da semana" });
 
-    const horas = agrupar(daMetrica, { grupo: "hora" }, estado.medida);
+    const horas = agrupar(daMetrica, { grupo: "hora" }, estado.medida, campo);
     const comVenda = horas.map((h, i) => (h.pedidos ? i : -1)).filter((i) => i >= 0);
     const primeira = Math.min(8, ...comVenda);
     const ultima = Math.max(20, ...comVenda);
@@ -541,7 +549,11 @@ async function carregarDados() {
         if (!respostaPedidos.ok || !Array.isArray(corpo)) {
             throw new Error(corpo?.error || "Não foi possível carregar os pedidos.");
         }
-        pedidos = corpo.map((p) => ({ ...p, _data: dataDoPedido(p) }));
+        pedidos = corpo.map((p) => {
+            const criacao = dataDoPedido(p);
+            const conclusao = p.dataConclusao ? dataDoPedido({ data: p.dataConclusao, hora: p.horaConclusao }) : null;
+            return { ...p, _data: criacao, _dataConclusao: conclusao || criacao };
+        });
         mostrarAviso("");
     } catch (error) {
         mostrarAviso(

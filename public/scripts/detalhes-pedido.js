@@ -77,6 +77,14 @@ function renderOrder(order, store) {
 
     setText("order-date-text", dateTime);
     setText("order-datetime", dateTime);
+    setText(
+        "order-completed",
+        order.dataConclusao
+            ? [order.dataConclusao, order.horaConclusao].filter(Boolean).join(" às ")
+            : order.status === "✅Finalizado" || order.status === "🟦Despachado"
+              ? "Data não registrada" // concluído antes de o sistema guardar essa data
+              : "Ainda não concluído",
+    );
     setText("nome_loja", store.usrName || "");
     setText("order-store-text", storeName);
     setText("order-store-name", storeName);

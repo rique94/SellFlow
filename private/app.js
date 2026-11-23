@@ -134,6 +134,20 @@ function numeroDecimal(valor) {
     return NaN;
 }
 
+// Venda concluída = Finalizado ou Despachado
+function isStatusConcluido(status) {
+    return status === "✅Finalizado" || status === "🟦Despachado";
+}
+
+// Data e hora no formato salvo nos pedidos ("22/11/2026", "14:05")
+function momentoAtual() {
+    const agora = new Date();
+    return {
+        data: agora.toLocaleDateString("pt-BR"),
+        hora: agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+    };
+}
+
 function isStatusComFrete(status) {
     return status === "🔵Despachar" || status === "🟦Despachado";
 }
@@ -461,16 +475,13 @@ app.post("/api/pedidos", (req, res) => {
                 error: `Limite de ${ID_MAXIMO} pedidos atingido. Exclua pedidos antigos para criar novos.`,
             });
         }
-        const agora = new Date();
-        const pedidoCriado = {
-            ...pedido,
-            data: agora.toLocaleDateString("pt-BR"),
-            hora: agora.toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-            }),
-            id: novoId,
-        };
+        const { data, hora } = momentoAtual();
+        const pedidoCriado = { ...pedido, data, hora, id: novoId };
+        // Já criado como venda concluída: a conclusão é agora
+        if (isStatusConcluido(pedido.status)) {
+            pedidoCriado.dataConclusao = data;
+            pedidoCriado.horaConclusao = hora;
+        }
 
         pedidos.push(pedidoCriado);
         salvarPedidos(pedidos);
@@ -504,7 +515,19 @@ app.put("/api/pedidos/:id", (req, res) => {
         }
 
         // Mantém id, data e hora originais
-        const pedidoAtualizado = { ...pedidos[indice], ...pedido };
+        const anterior = pedidos[indice];
+        const pedidoAtualizado = { ...anterior, ...pedido };
+
+        // Data de conclusão: grava ao passar para Finalizado/Despachado, mantém entre os dois
+        // (Despachado -> Finalizado não muda a data) e apaga se voltar para um status pendente
+        if (isStatusConcluido(pedido.status) && !isStatusConcluido(anterior.status)) {
+            const { data, hora } = momentoAtual();
+            pedidoAtualizado.dataConclusao = data;
+            pedidoAtualizado.horaConclusao = hora;
+        } else if (!isStatusConcluido(pedido.status)) {
+            delete pedidoAtualizado.dataConclusao;
+            delete pedidoAtualizado.horaConclusao;
+        }
         pedidos[indice] = pedidoAtualizado;
         salvarPedidos(pedidos);
 
