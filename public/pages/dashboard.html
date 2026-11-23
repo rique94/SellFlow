@@ -22,6 +22,7 @@
                     >
                     <a href="/metricas">📊 Métricas</a>
                 </nav>
+                <button type="button" class="sidebar-sair" data-sair>↩ Sair</button>
             </div>
         </header>
         <main>
@@ -33,7 +34,7 @@
                 <div
                     class="cards-dashboard"
                     id="total-pedidos"
-                    onclick="mostrarDados()"
+                    data-acao="mostrar-todos"
                 >
                     <div class="img-card-dashboard">
                         <img
@@ -51,7 +52,7 @@
                 <div
                     class="cards-dashboard"
                     id="retirar-pedidos"
-                    onclick="filtrarPedidos('🟡Retirar', '🟣Pagar local')"
+                    data-filtro="🟡Retirar|🟣Pagar local"
                 >
                     <div class="img-card-dashboard">
                         <img src="../images/clock-arrow-down.png" alt="imagem line-art de relógio">
@@ -66,7 +67,7 @@
                 <div
                     class="cards-dashboard"
                     id="pagar-pedidos"
-                    onclick="filtrarPedidos('🔴Pagar', '🟣Pagar local')"
+                    data-filtro="🔴Pagar|🟣Pagar local"
                 >
                     <div class="img-card-dashboard">
                         <img src="../images/banknote-arrow-up.png" alt="imagem line-art de dinheiro">
@@ -81,7 +82,7 @@
                 <div
                     class="cards-dashboard"
                     id="finalizados-pedidos"
-                    onclick="filtrarPedidos('✅Finalizado')"
+                    data-filtro="✅Finalizado"
                 >
                     <div class="img-card-dashboard">
                         <img src="../images/check.png" alt="imagem line-art check">
@@ -110,7 +111,7 @@
                         id="filtro-a-despachar"
                         type="button"
                         aria-pressed="false"
-                        onclick="alternarFiltroRapido('🔵Despachar')"
+                        data-filtro-rapido="🔵Despachar"
                     >
                         A despachar
                     </button>
@@ -119,7 +120,7 @@
                         id="filtro-despachados"
                         type="button"
                         aria-pressed="false"
-                        onclick="alternarFiltroRapido('🟦Despachado')"
+                        data-filtro-rapido="🟦Despachado"
                     >
                         Despachados
                     </button>
@@ -131,7 +132,7 @@
                         aria-label="Filtrar pedidos por status"
                         aria-expanded="false"
                         aria-controls="opcoes-status"
-                        onclick="alternarMenuStatus()"
+                        data-acao="menu-status"
                         >
                         Status: todos ▾
                         </button>
@@ -143,49 +144,49 @@
                         <button
                             class="opcao-filtro-pedido"
                             type="button"
-                            onclick="filtrarPedidos()"
+                            data-filtro=""
                         >
                             Todos os status
                         </button>
                         <button
                             class="opcao-filtro-pedido"
                             type="button"
-                            onclick="filtrarPedidos('🔴Pagar')"
+                            data-filtro="🔴Pagar"
                         >
                             🔴 Pagar
                         </button>
                         <button
                             class="opcao-filtro-pedido"
                             type="button"
-                            onclick="filtrarPedidos('🟡Retirar')"
+                            data-filtro="🟡Retirar"
                         >
                             🟡 Retirar (pago)
                         </button>
                         <button
                             class="opcao-filtro-pedido"
                             type="button"
-                            onclick="filtrarPedidos('🟣Pagar local')"
+                            data-filtro="🟣Pagar local"
                         >
                             🟣 Pagar local
                         </button>
                         <button
                             class="opcao-filtro-pedido"
                             type="button"
-                            onclick="filtrarPedidos('✅Finalizado')"
+                            data-filtro="✅Finalizado"
                         >
                             ✅ Finalizado
                         </button>
                         <button
                             class="opcao-filtro-pedido"
                             type="button"
-                            onclick="filtrarPedidos('🔵Despachar')"
+                            data-filtro="🔵Despachar"
                         >
                             🔵 A despachar
                         </button>
                         <button
                             class="opcao-filtro-pedido"
                             type="button"
-                            onclick="filtrarPedidos('🟦Despachado')"
+                            data-filtro="🟦Despachado"
                         >
                             🟦 Despachado
                         </button>
@@ -196,5 +197,6 @@
             <div class="container-cards" id="linhaCard"></div>
         </main>
     </body>
+    <script src="/scripts/sessao.js"></script>
     <script src="../scripts/dashboard.js"></script>
 </html>

@@ -4,6 +4,7 @@ node_modules/
 private/data/loja.json
 private/data/pedidos.json
 private/data/*.tmp
+private/data/*.invalido-*
 
 .env
 .env.*

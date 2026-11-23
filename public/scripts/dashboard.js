@@ -28,17 +28,22 @@ async function pegarDados() {
         fetch("/api/loja"),
         fetch("/api/pedidos"),
     ]);
+    // Lê as duas respostas sempre (mesmo com erro), para não deixar conexões abertas
+    const [loja, listaPedidos] = await Promise.all([
+        respostaLoja.json().catch(() => null),
+        respostaPedidos.json().catch(() => null),
+    ]);
     // Sem loja cadastrada: volta para a tela de entrada
     if (respostaLoja.status === 503) {
         window.location.replace("/");
         return new Promise(() => {});
     }
-    if (!respostaLoja.ok || !respostaPedidos.ok) {
+    if (!respostaLoja.ok || !respostaPedidos.ok || !loja || !Array.isArray(listaPedidos)) {
         throw new Error("Não foi possível carregar os dados da loja.");
     }
     data = {
-        usr: await respostaLoja.json(),
-        pedidos: await respostaPedidos.json(),
+        usr: loja,
+        pedidos: listaPedidos,
     };
     pedidos = data.pedidos;
 }
@@ -259,6 +264,23 @@ function renderizarPedidos() {
         })
         .join("");
 }
+
+// Cliques dos cartões e filtros (atributos data-* no HTML; a CSP não permite onclick inline)
+document.addEventListener("click", (event) => {
+    const alvo = event.target.closest("[data-filtro], [data-filtro-rapido], [data-acao]");
+    if (!alvo || !data) {
+        return;
+    }
+    if (alvo.dataset.acao === "mostrar-todos") {
+        mostrarDados();
+    } else if (alvo.dataset.acao === "menu-status") {
+        alternarMenuStatus();
+    } else if (alvo.dataset.filtroRapido !== undefined) {
+        alternarFiltroRapido(alvo.dataset.filtroRapido);
+    } else {
+        filtrarPedidos(...alvo.dataset.filtro.split("|"));
+    }
+});
 
 document.getElementById("pesquisa-pedidos").addEventListener("input", (event) => {
     termoPesquisa = event.target.value;

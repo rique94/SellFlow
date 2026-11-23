@@ -487,12 +487,17 @@ async function loadOrderDetails() {
             fetch("/api/loja"),
             fetch(`/api/pedidos/${encodeURIComponent(orderId)}`),
         ]);
+        // Lê as duas respostas sempre (mesmo com erro), para não deixar conexões abertas
+        const [store, order] = await Promise.all([
+            storeResponse.json().catch(() => null),
+            orderResponse.json().catch(() => null),
+        ]);
         // Sem loja cadastrada: volta para a tela de entrada
         if (storeResponse.status === 503) {
             window.location.replace("/");
             return;
         }
-        if (!storeResponse.ok) {
+        if (!storeResponse.ok || !store) {
             throw new Error(
                 `Falha ao carregar os dados da loja (${storeResponse.status}).`,
             );
@@ -500,16 +505,12 @@ async function loadOrderDetails() {
         if (orderResponse.status === 404) {
             throw new Error("O pedido solicitado não foi encontrado.");
         }
-        if (!orderResponse.ok) {
+        if (!orderResponse.ok || !order) {
             throw new Error(
                 `Falha ao carregar o pedido (${orderResponse.status}).`,
             );
         }
 
-        const [store, order] = await Promise.all([
-            storeResponse.json(),
-            orderResponse.json(),
-        ]);
         renderOrder(order, store);
     } catch (error) {
         showFeedback(

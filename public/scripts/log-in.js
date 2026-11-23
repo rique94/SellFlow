@@ -55,6 +55,11 @@ form.addEventListener("submit", async (event) => {
             mostrarMensagem("Nome, telefone ou senha estão incorretos");
             passwd.classList.add("campo-erro");
             passwd.select();
+        } else if (response.status === 429) {
+            // Muitas tentativas erradas: o servidor diz quanto tempo esperar
+            const resultado = await response.json().catch(() => ({}));
+            mostrarMensagem(resultado.error || "Muitas tentativas. Aguarde um pouco e tente de novo.");
+            passwd.value = "";
         } else if (response.status === 503) {
             mostrarMensagem("Nenhuma loja cadastrada nesta instalação.");
         } else {

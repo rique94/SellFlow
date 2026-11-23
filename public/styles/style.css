@@ -430,6 +430,35 @@ main {
 
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.151);
 }
+
+/* ---------- Botão Sair (fica no pé da barra lateral) ---------- */
+.sidebar-sair {
+    margin: auto 14px 18px;
+    padding: 11px 12px;
+    border: 1px solid rgb(255 255 255 / 12%);
+    border-radius: 7px;
+    background: transparent;
+    color: #c3cfe6;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
+}
+.sidebar-sair:hover {
+    background-color: rgb(255 255 255 / 7%);
+    color: #fff;
+}
+.sidebar-sair:focus-visible {
+    outline: 2px solid #6f9cff;
+    outline-offset: 2px;
+}
+.sidebar-sair:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
 /* ---------- Telas estreitas: o menu lateral vira uma barra no topo ---------- */
 @media (max-width: 760px) {
     body {
@@ -463,6 +492,11 @@ main {
     }
     .sidebar nav a {
         padding: 9px 10px;
+        font-size: 13px;
+    }
+    .sidebar-sair {
+        margin: 8px 12px;
+        padding: 8px 10px;
         font-size: 13px;
     }
     /* "body >" para valer também sobre o width das páginas (ex.: detalhes do pedido) */

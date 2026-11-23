@@ -357,10 +357,14 @@ function desenharBarrasHorizontais(lista, itens, vazio) {
         .map((item) => `
             <li class="m-barra" title="${escapeHtml(`${item.nome}: ${item.textoValor}${item.extra ? ` · ${item.extra}` : ""}`)}">
                 <span class="m-barra-nome">${escapeHtml(item.nome)}</span>
-                <span class="m-barra-trilho"><span class="m-barra-preenchida" style="width:${(item.valor / max) * 100}%"></span></span>
+                <span class="m-barra-trilho"><span class="m-barra-preenchida" data-largura="${(item.valor / max) * 100}"></span></span>
                 <span class="m-barra-valor">${escapeHtml(item.textoValor)}${item.extra ? `<small>${escapeHtml(item.extra)}</small>` : ""}</span>
             </li>`)
         .join("");
+    // Largura aplicada pelo JS (a CSP não permite style="..." dentro do HTML)
+    lista.querySelectorAll("[data-largura]").forEach((barra) => {
+        barra.style.width = `${barra.dataset.largura}%`;
+    });
 }
 
 /* ================= Tela ================= */
@@ -401,7 +405,7 @@ function atualizar() {
     const ticketAnt = concluidasAnt.length ? somar(concluidasAnt, "valor") / concluidasAnt.length : 0;
     const varTicket = variacao(ticket, ticketAnt);
     indicadores.push(`
-        <div class="m-indicador" style="cursor:default">
+        <div class="m-indicador m-indicador-fixo">
             <span class="m-indicador-rotulo"><span class="m-indicador-icone" aria-hidden="true">🎯</span>Ticket médio</span>
             <span class="m-indicador-valor">${moeda.format(ticket)}</span>
             <span class="m-indicador-extra">por venda concluída${varTicket !== null ? ` · ${textoVariacao(varTicket, true)}` : ""}</span>

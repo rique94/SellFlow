@@ -2,14 +2,18 @@
  * Cadastro da loja: validação dos dados, consulta de CEP e hash de senha.
  */
 const crypto = require("crypto");
+const { promisify } = require("util");
+
+// Versão assíncrona: o cálculo roda fora da thread principal e não trava o servidor
+const scrypt = promisify(crypto.scrypt);
 
 /* ================= Senha (scrypt, nativo do Node) ================= */
 
 const PREFIXO_HASH = "scrypt";
 
-function hashSenha(senha) {
+async function hashSenha(senha) {
     const sal = crypto.randomBytes(16).toString("hex");
-    const hash = crypto.scryptSync(senha, sal, 64).toString("hex");
+    const hash = (await scrypt(senha, sal, 64)).toString("hex");
     return `${PREFIXO_HASH}$${sal}$${hash}`;
 }
 
@@ -21,7 +25,7 @@ function isHash(valor) {
  * Confere a senha digitada com a guardada.
  * Aceita também senha antiga em texto puro (lojas cadastradas antes do hash).
  */
-function verificarSenha(senha, guardada) {
+async function verificarSenha(senha, guardada) {
     if (typeof senha !== "string" || typeof guardada !== "string") {
         return false;
     }
@@ -35,7 +39,7 @@ function verificarSenha(senha, guardada) {
     if (!sal || !/^[0-9a-f]{128}$/i.test(hashGuardado || "")) {
         return false;
     }
-    const hashDigitado = crypto.scryptSync(senha, sal, 64);
+    const hashDigitado = await scrypt(senha, sal, 64);
     const esperado = Buffer.from(hashGuardado, "hex");
     return crypto.timingSafeEqual(esperado, hashDigitado);
 }
@@ -240,7 +244,7 @@ async function validarCadastro(dados) {
         loja: {
             login,
             usrName: dados.nomeLoja.trim(),
-            pwd: hashSenha(senha),
+            pwd: await hashSenha(senha),
             tel: telefone,
             address,
             endereco,

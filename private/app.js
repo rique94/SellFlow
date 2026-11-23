@@ -10,9 +10,28 @@ const {
     isHash,
     somenteDigitos,
 } = require("./cadastro");
+const {
+    exigirHostLocal,
+    cabecalhosSeguranca,
+    criarSessao,
+    sessaoValida,
+    encerrarSessao,
+    segundosBloqueado,
+    registrarErroLogin,
+    registrarAcertoLogin,
+    reservarLogin,
+    liberarLogin,
+} = require("./seguranca");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+
+// Não anuncia a tecnologia do servidor
+app.disable("x-powered-by");
+
+// Hash usado quando o usuário não existe, para o login levar o mesmo tempo nos dois casos
+let hashFicticio = null;
+hashSenha(require("crypto").randomBytes(16).toString("hex")).then((hash) => (hashFicticio = hash));
 
 /* ================= Arquivos de dados ================= */
 
@@ -297,7 +316,8 @@ function proximoIdPedido(pedidos) {
 }
 
 function lerIdPedido(req, res) {
-    const id = Number(req.params.id);
+    // Só dígitos ("1e0" e "0x1" não são ids)
+    const id = /^\d{1,6}$/.test(req.params.id) ? Number(req.params.id) : NaN;
     if (!Number.isInteger(id) || id < 1) {
         res.status(400).json({ error: "Pedido inválido." });
         return null;
@@ -307,16 +327,34 @@ function lerIdPedido(req, res) {
 
 /* ================= Middlewares ================= */
 
+// Primeiro as barreiras: Host local (DNS rebinding/CSRF) e cabeçalhos de segurança
+app.use(exigirHostLocal);
+app.use(cabecalhosSeguranca);
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "../public")));
+
+const estaLogado = (req) => sessaoValida(req, lerLoja());
+
+// Tela de entrada: quem já está logado vai direto para os pedidos
+app.get(["/", "/index.html"], (req, res) => {
+    if (estaLogado(req)) {
+        return res.redirect(302, "/dashboard");
+    }
+    res.sendFile(path.join(__dirname, "../public/index.html"));
+});
+
+// As páginas internas só abrem pelas rotas protegidas abaixo, nunca direto pela pasta
+app.use("/pages", (req, res) => res.status(404).type("text/plain").send("Não encontrado."));
+app.use(express.static(path.join(__dirname, "../public"), { index: false }));
 
 // Rotas que funcionam mesmo sem loja cadastrada (necessárias para o cadastro)
 const ROTAS_SEM_LOJA = ["/cadastro", "/cadastro/status", "/cep"];
+// Rotas da API liberadas sem login
+const ROTAS_PUBLICAS = ["/login", "/logout", "/cadastro", "/cadastro/status"];
+const casaRota = (lista, caminho) => lista.some((rota) => caminho === rota || caminho.startsWith(`${rota}/`));
 
 // Enquanto a loja não for cadastrada, o resto da API não funciona
 app.use("/api", (req, res, next) => {
-    const liberada = ROTAS_SEM_LOJA.some((rota) => req.path === rota || req.path.startsWith(`${rota}/`));
-    if (!liberada && !lojaCadastrada()) {
+    if (!casaRota(ROTAS_SEM_LOJA, req.path) && !lojaCadastrada()) {
         return res.status(503).json({
             error: "Nenhuma loja cadastrada nesta instalação.",
         });
@@ -324,23 +362,31 @@ app.use("/api", (req, res, next) => {
     next();
 });
 
+// O resto da API exige login (a consulta de CEP também é liberada durante o primeiro cadastro)
+app.use("/api", (req, res, next) => {
+    const cepNoCadastro = casaRota(["/cep"], req.path) && !lojaCadastrada();
+    if (casaRota(ROTAS_PUBLICAS, req.path) || cepNoCadastro || estaLogado(req)) {
+        return next();
+    }
+    return res.status(401).json({ error: "Faça login para continuar." });
+});
+
 /* ================= Páginas ================= */
 
-app.get("/dashboard", (req, res) => {
-    res.sendFile(path.join(PASTA_PAGINAS, "dashboard.html"));
-});
+// Página interna: sem loja ou sem login, volta para a tela de entrada
+function paginaProtegida(arquivo) {
+    return (req, res) => {
+        if (!lojaCadastrada() || !estaLogado(req)) {
+            return res.redirect(302, "/");
+        }
+        res.sendFile(path.join(PASTA_PAGINAS, arquivo));
+    };
+}
 
-app.get("/novo-pedido", (req, res) => {
-    res.sendFile(path.join(PASTA_PAGINAS, "novo-pedido.html"));
-});
-
-app.get("/detalhes-pedido/:id", (req, res) => {
-    res.sendFile(path.join(PASTA_PAGINAS, "detalhes-pedido.html"));
-});
-
-app.get("/metricas", (req, res) => {
-    res.sendFile(path.join(PASTA_PAGINAS, "metricas.html"));
-});
+app.get("/dashboard", paginaProtegida("dashboard.html"));
+app.get("/novo-pedido", paginaProtegida("novo-pedido.html"));
+app.get("/detalhes-pedido/:id", paginaProtegida("detalhes-pedido.html"));
+app.get("/metricas", paginaProtegida("metricas.html"));
 
 app.get("/cadastro", (req, res) => {
     res.sendFile(path.join(PASTA_PAGINAS, "cadastro.html"));
@@ -356,29 +402,73 @@ app.get("/detalhes-pedido/:loja/:id", (req, res) => {
 /* ================= API ================= */
 
 // Login (por usuário ou telefone, com ou sem máscara)
-app.post("/api/login", (req, res) => {
-    const { usr, pwd } = req.body || {};
-    const loja = lerLoja();
-    if (!loja) {
-        return res.status(503).json({ error: "Nenhuma loja cadastrada nesta instalação." });
-    }
-    const usuario = typeof usr === "string" ? usr.trim() : "";
-    const digitos = somenteDigitos(usuario);
-    const usuarioConfere =
-        usuario.length > 0 &&
-        (usuario === loja.login || (digitos.length >= 10 && digitos === somenteDigitos(loja.tel)));
+function textoEspera(segundos) {
+    if (segundos < 60) return `${segundos} segundo${segundos === 1 ? "" : "s"}`;
+    const minutos = Math.ceil(segundos / 60);
+    return `${minutos} minuto${minutos === 1 ? "" : "s"}`;
+}
 
-    if (usuarioConfere && verificarSenha(pwd, loja.pwd)) {
-        // Loja antiga com senha em texto puro: troca por hash no primeiro login
-        if (!isHash(loja.pwd)) {
-            salvarLoja({ ...loja, pwd: hashSenha(pwd) });
-            console.log("Senha da loja convertida para hash.");
-        }
-        console.log("Entrada bem sucedida!");
-        return res.status(200).json({ ok: true });
+function respostaBloqueio(res, segundos, mensagem) {
+    res.setHeader("Retry-After", String(segundos));
+    return res.status(429).json({ error: mensagem, espera: segundos });
+}
+
+app.post("/api/login", async (req, res) => {
+    const espera = segundosBloqueado();
+    if (espera) {
+        return respostaBloqueio(res, espera, `Muitas tentativas erradas. Tente de novo em ${textoEspera(espera)}.`);
     }
-    console.log("Alguma credencial está errada!");
-    return res.status(401).json({ error: "Usuário ou senha incorretos." });
+    if (!reservarLogin()) {
+        return respostaBloqueio(res, 1, "Aguarde um instante e tente de novo.");
+    }
+
+    try {
+        const { usr, pwd } = req.body || {};
+        const loja = lerLoja();
+        if (!loja) {
+            return res.status(503).json({ error: "Nenhuma loja cadastrada nesta instalação." });
+        }
+        const usuario = typeof usr === "string" ? usr.trim() : "";
+        const digitos = somenteDigitos(usuario);
+        const usuarioConfere =
+            usuario.length > 0 &&
+            (usuario === loja.login || (digitos.length >= 10 && digitos === somenteDigitos(loja.tel)));
+
+        // Confere a senha mesmo com usuário errado (contra um hash fictício), para o tempo
+        // de resposta não revelar se o usuário existe
+        const senhaConfere = await verificarSenha(
+            typeof pwd === "string" ? pwd : "",
+            usuarioConfere ? loja.pwd : hashFicticio,
+        );
+
+        if (usuarioConfere && senhaConfere) {
+            // Loja antiga com senha em texto puro: troca por hash no primeiro login
+            if (!isHash(loja.pwd)) {
+                salvarLoja({ ...loja, pwd: await hashSenha(pwd) });
+                console.log("Senha da loja convertida para hash.");
+            }
+            registrarAcertoLogin();
+            criarSessao(res, loja);
+            console.log("Entrada bem sucedida!");
+            return res.status(200).json({ ok: true });
+        }
+
+        registrarErroLogin();
+        console.log("Alguma credencial está errada!");
+        const bloqueio = segundosBloqueado();
+        if (bloqueio) {
+            return respostaBloqueio(res, bloqueio, `Usuário ou senha incorretos. Por segurança, aguarde ${textoEspera(bloqueio)} para tentar de novo.`);
+        }
+        return res.status(401).json({ error: "Usuário ou senha incorretos." });
+    } finally {
+        liberarLogin();
+    }
+});
+
+// Sair: encerra a sessão deste navegador
+app.post("/api/logout", (req, res) => {
+    encerrarSessao(req, res);
+    res.json({ ok: true });
 });
 
 // A instalação já tem loja cadastrada?
@@ -414,9 +504,11 @@ app.post("/api/cadastro", async (req, res) => {
     }
 
     try {
-        // Um loja.json vazio ou inválido não é uma loja: remove para o cadastro poder criar o novo
+        // Um loja.json vazio ou inválido não é uma loja: guarda uma cópia (nunca apaga) e libera o cadastro
         if (fs.existsSync(CAMINHO_LOJA) && !lojaCadastrada()) {
-            fs.unlinkSync(CAMINHO_LOJA);
+            const copia = `${CAMINHO_LOJA}.invalido-${Date.now()}`;
+            fs.renameSync(CAMINHO_LOJA, copia);
+            console.warn(`loja.json inválido guardado em ${path.basename(copia)} antes do novo cadastro.`);
         }
         // "wx" só cria se o arquivo não existir (evita dois cadastros ao mesmo tempo)
         fs.writeFileSync(CAMINHO_LOJA, JSON.stringify(loja, null, 4), { encoding: "utf8", flag: "wx" });
