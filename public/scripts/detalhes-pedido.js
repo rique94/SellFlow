@@ -617,7 +617,7 @@ function buildShippingSheet() {
 
             <section class="ps-block ps-sender">
                 <h2 class="ps-block-title">Remetente</h2>
-                <p class="ps-line"><strong>RB Outlet${storeName ? ` · ${escapeHtml(storeName)}` : ""}</strong></p>
+                ${storeName ? `<p class="ps-line"><strong>${escapeHtml(storeName)}</strong></p>` : ""}
                 ${currentStore?.address ? `<p class="ps-line">${escapeHtml(currentStore.address)}</p>` : ""}
                 ${currentStore?.tel ? `<p class="ps-line">Tel.: ${escapeHtml(formatPhone(currentStore.tel))}</p>` : ""}
             </section>
@@ -659,8 +659,7 @@ function buildFullSheet() {
         <article class="ps-full-sheet">
             <header class="ps-full-header">
                 <div>
-                    <p class="ps-brand">RB Outlet</p>
-                    ${storeName ? `<p class="ps-muted">${escapeHtml(storeName)}</p>` : ""}
+                    <p class="ps-brand">${escapeHtml(storeName || "Pedido")}</p>
                     ${currentStore?.address ? `<p class="ps-muted ps-store-address">${escapeHtml(currentStore.address)}</p>` : ""}
                     ${currentStore?.tel ? `<p class="ps-muted">Tel.: ${escapeHtml(formatPhone(currentStore.tel))}</p>` : ""}
                 </div>

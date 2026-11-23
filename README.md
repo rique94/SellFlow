@@ -4,7 +4,7 @@
 
 O **SellFlow** é um sistema desenvolvido para facilitar o gerenciamento de vendas, pedidos e operações de lojas, oferecendo uma interface simples para organização e acompanhamento dos pedidos.
 
-O projeto está sendo desenvolvido inicialmente para uso na **RB Outlet**, mas sua arquitetura está sendo planejada para permitir o gerenciamento de múltiplas lojas.
+Cada instalação atende uma loja: no primeiro acesso, a loja é cadastrada pelo próprio sistema.
 
 ## Status
 
