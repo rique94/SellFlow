@@ -39,40 +39,42 @@ Novas funcionalidades e melhorias estão sendo adicionadas ao projeto conforme s
 ```text
 SellFlow/
 ├── private/
-│   ├── data
-│   │   ├── centroComercial
-│   │   │   └── pedidos.json
-│   │   │
-│   │   ├── conde
-│   │   │   └── pedidos.json
-│   │   │
-│   │   ├── centroComercial
-│   │   │   └── pedidos.json
-│   │   │
-│   │   └── lojas.json
+│   ├── data/
+│   │   ├── loja.json        (criado pelo cadastro, fora do git)
+│   │   └── pedidos.json     (criado automaticamente, fora do git)
 │   │
-│   └── app.js
+│   ├── app.js
+│   └── cadastro.js
 │
 ├── public/
+│   ├── images/
+│   │   ├── banknote-arrow-up.png
+│   │   ├── check.png
+│   │   ├── clock-arrow-down.png
+│   │   └── gift.png
+│   │
 │   ├── pages/
+│   │   ├── cadastro.html
 │   │   ├── dashboard.html
-│   │   │
+│   │   ├── detalhes-pedido.html
 │   │   └── novo-pedido.html
 │   │
-│   ├── scipts/
+│   ├── scripts/
+│   │   ├── cadastro.js
 │   │   ├── dashboard.js
-│   │   │ 
+│   │   ├── detalhes-pedido.js
 │   │   ├── log-in.js
-│   │   │
 │   │   └── novo-pedido.js
 │   │
 │   ├── styles/
+│   │   ├── cadastro.css
+│   │   ├── dashboard.css
+│   │   ├── detalhes-pedido.css
 │   │   ├── log-in.css
-│   │   │ 
 │   │   ├── novo-pedido.css
-│   │   │
 │   │   └── style.css
 │   │
+│   ├── favicon.svg
 │   └── index.html
 │
 ├── package.json

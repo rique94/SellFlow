@@ -231,10 +231,38 @@ function cancelEditing() {
     renderOrder(currentOrder, currentStore);
 }
 
+// Guarda no pedido o que já foi digitado nos itens, antes de redesenhar a tabela
+// (sem isso, adicionar ou remover um item apagava as edições ainda não salvas)
+function syncItemsFromInputs() {
+    if (!isEditing || !Array.isArray(currentOrder.listaPedidos)) {
+        return;
+    }
+    const rows = [...document.querySelectorAll("#order-items tr")].filter((row) =>
+        row.querySelector(".edit-item-description"),
+    );
+    rows.forEach((row, index) => {
+        const item = currentOrder.listaPedidos[index];
+        if (!item) {
+            return;
+        }
+        item.desc_peca = row.querySelector(".edit-item-description").value;
+        item.qtd_peca = row.querySelector(".edit-item-quantity").value;
+        item.valor_peca = row.querySelector(".edit-item-price").value;
+        const size = row.querySelector(".edit-item-size").value;
+        delete item.size;
+        if (size) {
+            item.tamanho = size;
+        } else {
+            delete item.tamanho;
+        }
+    });
+}
+
 function addItem() {
     if (!Array.isArray(currentOrder.listaPedidos)) {
         currentOrder.listaPedidos = [];
     }
+    syncItemsFromInputs();
     currentOrder.listaPedidos.push({
         desc_peca: "",
         qtd_peca: "1",
@@ -242,7 +270,9 @@ function addItem() {
     });
     renderItems();
     renderSummary();
-    document.querySelector(".edit-item-description:last-of-type")?.focus();
+    updateEditedTotals();
+    const descriptions = document.querySelectorAll(".edit-item-description");
+    descriptions[descriptions.length - 1]?.focus();
 }
 
 function updateEditedTotals() {
@@ -449,6 +479,11 @@ async function loadOrderDetails() {
             fetch("/api/loja"),
             fetch(`/api/pedidos/${encodeURIComponent(orderId)}`),
         ]);
+        // Sem loja cadastrada: volta para a tela de entrada
+        if (storeResponse.status === 503) {
+            window.location.replace("/");
+            return;
+        }
         if (!storeResponse.ok) {
             throw new Error(
                 `Falha ao carregar os dados da loja (${storeResponse.status}).`,
@@ -729,6 +764,7 @@ document.getElementById("order-items").addEventListener("click", (event) => {
     if (!removeButton) {
         return;
     }
+    syncItemsFromInputs();
     currentOrder.listaPedidos.splice(Number(removeButton.dataset.removeItem), 1);
     renderItems();
     updateEditedTotals();

@@ -121,6 +121,11 @@ async function pegarDados() {
     const storeName = document.getElementById("nome_loja");
     try {
         const response = await fetch("/api/loja");
+        // Sem loja cadastrada: volta para a tela de entrada
+        if (response.status === 503) {
+            window.location.replace("/");
+            return;
+        }
         if (!response.ok) {
             throw new Error("Não foi possível carregar os dados da loja.");
         }

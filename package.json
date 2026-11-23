@@ -13,7 +13,6 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "express": "^5.2.1",
-    "path": "^0.12.7"
+    "express": "^5.2.1"
   }
 }

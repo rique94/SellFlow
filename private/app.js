@@ -2,6 +2,14 @@ const fs = require("fs");
 const http = require("http");
 const path = require("path");
 const express = require("express");
+const {
+    validarCadastro,
+    consultarCep,
+    verificarSenha,
+    hashSenha,
+    isHash,
+    somenteDigitos,
+} = require("./cadastro");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -22,12 +30,29 @@ const STATUSES_PERMITIDOS = [
     "🟦Despachado",
 ];
 
-// Lê o arquivo a cada chamada para sempre refletir a versão atual do disco
+// Lê o arquivo a cada chamada para sempre refletir a versão atual do disco.
+// Retorna null se o arquivo não existir, estiver vazio, com JSON inválido
+// ou sem os dados mínimos (login e senha) — nesses casos não há loja.
 function lerLoja() {
-    if (!fs.existsSync(CAMINHO_LOJA)) {
+    let loja;
+    try {
+        loja = JSON.parse(fs.readFileSync(CAMINHO_LOJA, "utf8"));
+    } catch {
         return null;
     }
-    return JSON.parse(fs.readFileSync(CAMINHO_LOJA, "utf8"));
+    const valida =
+        loja !== null &&
+        typeof loja === "object" &&
+        !Array.isArray(loja) &&
+        typeof loja.login === "string" &&
+        loja.login.trim() !== "" &&
+        typeof loja.pwd === "string" &&
+        loja.pwd !== "";
+    return valida ? loja : null;
+}
+
+function lojaCadastrada() {
+    return lerLoja() !== null;
 }
 
 // Dados da loja que podem ir para o navegador (nunca a senha)
@@ -36,11 +61,39 @@ function lojaPublica(loja) {
     return dados;
 }
 
+function salvarLoja(loja) {
+    const temporario = `${CAMINHO_LOJA}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(temporario, JSON.stringify(loja, null, 4), "utf8");
+    fs.renameSync(temporario, CAMINHO_LOJA);
+}
+
+// Erro de arquivo de pedidos estragado (vira uma resposta clara, sem sobrescrever o arquivo)
+class ErroArquivoPedidos extends Error {}
+
+function mensagemArquivoPedidos(error) {
+    console.error(error.message);
+    return `${error.message} Corrija ou restaure o arquivo em private/data antes de continuar.`;
+}
+
 function lerPedidos() {
     if (!fs.existsSync(CAMINHO_PEDIDOS)) {
         return [];
     }
-    return JSON.parse(fs.readFileSync(CAMINHO_PEDIDOS, "utf8"));
+    const conteudo = fs.readFileSync(CAMINHO_PEDIDOS, "utf8");
+    // Arquivo vazio = nenhum pedido ainda
+    if (!conteudo.trim()) {
+        return [];
+    }
+    let pedidos;
+    try {
+        pedidos = JSON.parse(conteudo);
+    } catch {
+        throw new ErroArquivoPedidos("O arquivo pedidos.json está com um JSON inválido.");
+    }
+    if (!Array.isArray(pedidos)) {
+        throw new ErroArquivoPedidos("O arquivo pedidos.json não contém uma lista de pedidos.");
+    }
+    return pedidos;
 }
 
 // Escrita atômica: grava num temporário e renomeia, para não corromper o arquivo
@@ -65,6 +118,20 @@ function salvarPedidos(pedidos) {
 
 function isObjeto(valor) {
     return Boolean(valor) && typeof valor === "object" && !Array.isArray(valor);
+}
+
+/*
+ * Converte um valor numérico vindo do formulário: aceita número ou texto decimal simples
+ * ("12", "49.90"). Recusa "0x10", "1e3", "Infinity", "" etc. Retorna NaN se inválido.
+ */
+function numeroDecimal(valor) {
+    if (typeof valor === "number") {
+        return Number.isFinite(valor) ? valor : NaN;
+    }
+    if (typeof valor === "string" && /^\s*-?\d+(\.\d+)?\s*$/.test(valor)) {
+        return Number(valor);
+    }
+    return NaN;
 }
 
 function isStatusComFrete(status) {
@@ -117,8 +184,8 @@ function validarPedido(dados) {
         if (!isObjeto(item)) {
             return false;
         }
-        const quantidade = Number(item.qtd_peca);
-        const valor = Number(item.valor_peca);
+        const quantidade = numeroDecimal(item.qtd_peca);
+        const valor = numeroDecimal(item.valor_peca);
         return (
             typeof item.desc_peca === "string" &&
             Boolean(item.desc_peca.trim()) &&
@@ -126,9 +193,6 @@ function validarPedido(dados) {
             Number.isInteger(quantidade) &&
             quantidade >= 1 &&
             quantidade <= 10000 &&
-            item.valor_peca !== "" &&
-            (typeof item.valor_peca === "string" ||
-                typeof item.valor_peca === "number") &&
             Number.isFinite(valor) &&
             valor >= 0 &&
             valor <= 10000000 &&
@@ -141,12 +205,10 @@ function validarPedido(dados) {
     }
 
     const freteEnviado = dados.frete;
+    const freteNumero = numeroDecimal(freteEnviado);
     if (
         freteEnviado !== undefined &&
-        (freteEnviado === "" ||
-            !Number.isFinite(Number(freteEnviado)) ||
-            Number(freteEnviado) < 0 ||
-            Number(freteEnviado) > 10000000)
+        (!Number.isFinite(freteNumero) || freteNumero < 0 || freteNumero > 10000000)
     ) {
         return {
             erro: isStatusComFrete(status)
@@ -157,13 +219,13 @@ function validarPedido(dados) {
     if (isStatusComFrete(status) && freteEnviado === undefined) {
         return { erro: "Informe um valor de frete válido." };
     }
-    const frete = isStatusComFrete(status) ? Number(freteEnviado) : 0;
+    const frete = isStatusComFrete(status) ? freteNumero : 0;
 
     const listaPedidos = itens.map((item) => {
         const peca = {
             desc_peca: item.desc_peca.trim(),
-            qtd_peca: String(Number(item.qtd_peca)),
-            valor_peca: String(Number(item.valor_peca)),
+            qtd_peca: String(numeroDecimal(item.qtd_peca)),
+            valor_peca: String(numeroDecimal(item.valor_peca)),
         };
         if (item.tamanho && item.tamanho.trim()) {
             peca.tamanho = item.tamanho.trim();
@@ -234,9 +296,13 @@ function lerIdPedido(req, res) {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
 
-// Enquanto a loja não for cadastrada, a API não funciona
+// Rotas que funcionam mesmo sem loja cadastrada (necessárias para o cadastro)
+const ROTAS_SEM_LOJA = ["/cadastro", "/cadastro/status", "/cep"];
+
+// Enquanto a loja não for cadastrada, o resto da API não funciona
 app.use("/api", (req, res, next) => {
-    if (!fs.existsSync(CAMINHO_LOJA)) {
+    const liberada = ROTAS_SEM_LOJA.some((rota) => req.path === rota || req.path.startsWith(`${rota}/`));
+    if (!liberada && !lojaCadastrada()) {
         return res.status(503).json({
             error: "Nenhuma loja cadastrada nesta instalação.",
         });
@@ -258,6 +324,10 @@ app.get("/detalhes-pedido/:id", (req, res) => {
     res.sendFile(path.join(PASTA_PAGINAS, "detalhes-pedido.html"));
 });
 
+app.get("/cadastro", (req, res) => {
+    res.sendFile(path.join(PASTA_PAGINAS, "cadastro.html"));
+});
+
 // URLs antigas (da época com várias lojas) redirecionam para as novas
 app.get("/dashboard/:loja", (req, res) => res.redirect(302, "/dashboard"));
 app.get("/novo-pedido/:loja", (req, res) => res.redirect(302, "/novo-pedido"));
@@ -267,12 +337,25 @@ app.get("/detalhes-pedido/:loja/:id", (req, res) => {
 
 /* ================= API ================= */
 
-// Login
+// Login (por usuário ou telefone, com ou sem máscara)
 app.post("/api/login", (req, res) => {
     const { usr, pwd } = req.body || {};
     const loja = lerLoja();
+    if (!loja) {
+        return res.status(503).json({ error: "Nenhuma loja cadastrada nesta instalação." });
+    }
+    const usuario = typeof usr === "string" ? usr.trim() : "";
+    const digitos = somenteDigitos(usuario);
+    const usuarioConfere =
+        usuario.length > 0 &&
+        (usuario === loja.login || (digitos.length >= 10 && digitos === somenteDigitos(loja.tel)));
 
-    if ((usr === loja.login || usr === loja.tel) && pwd === loja.pwd) {
+    if (usuarioConfere && verificarSenha(pwd, loja.pwd)) {
+        // Loja antiga com senha em texto puro: troca por hash no primeiro login
+        if (!isHash(loja.pwd)) {
+            salvarLoja({ ...loja, pwd: hashSenha(pwd) });
+            console.log("Senha da loja convertida para hash.");
+        }
         console.log("Entrada bem sucedida!");
         return res.status(200).json({ ok: true });
     }
@@ -280,9 +363,66 @@ app.post("/api/login", (req, res) => {
     return res.status(401).json({ error: "Usuário ou senha incorretos." });
 });
 
+// A instalação já tem loja cadastrada?
+app.get("/api/cadastro/status", (req, res) => {
+    res.json({ cadastrada: lojaCadastrada() });
+});
+
+// Consulta de CEP (preenche o endereço no formulário de cadastro)
+app.get("/api/cep/:cep", async (req, res) => {
+    const cep = somenteDigitos(req.params.cep);
+    if (cep.length !== 8) {
+        return res.status(400).json({ error: "O CEP deve ter 8 dígitos." });
+    }
+    const consulta = await consultarCep(cep);
+    if (consulta.indisponivel) {
+        return res.status(503).json({ error: "Não foi possível consultar o CEP agora. Preencha o endereço manualmente." });
+    }
+    if (!consulta.existe) {
+        return res.status(404).json({ error: "Este CEP não existe. Confira os números." });
+    }
+    return res.json(consulta.dados);
+});
+
+// Cadastro da loja (só funciona enquanto não houver loja cadastrada)
+app.post("/api/cadastro", async (req, res) => {
+    if (lojaCadastrada()) {
+        return res.status(409).json({ error: "Já existe uma loja cadastrada nesta instalação." });
+    }
+
+    const { erro, loja } = await validarCadastro(req.body);
+    if (erro) {
+        return res.status(400).json({ error: erro.mensagem, campo: erro.campo });
+    }
+
+    try {
+        // Um loja.json vazio ou inválido não é uma loja: remove para o cadastro poder criar o novo
+        if (fs.existsSync(CAMINHO_LOJA) && !lojaCadastrada()) {
+            fs.unlinkSync(CAMINHO_LOJA);
+        }
+        // "wx" só cria se o arquivo não existir (evita dois cadastros ao mesmo tempo)
+        fs.writeFileSync(CAMINHO_LOJA, JSON.stringify(loja, null, 4), { encoding: "utf8", flag: "wx" });
+    } catch (error) {
+        if (error.code === "EEXIST") {
+            return res.status(409).json({ error: "Já existe uma loja cadastrada nesta instalação." });
+        }
+        throw error;
+    }
+    if (!fs.existsSync(CAMINHO_PEDIDOS)) {
+        salvarPedidos([]);
+    }
+
+    console.log(`Loja "${loja.usrName}" cadastrada.`);
+    return res.status(201).json({ loja: lojaPublica(loja) });
+});
+
 // Dados da loja
 app.get("/api/loja", (req, res) => {
-    res.json(lojaPublica(lerLoja()));
+    const loja = lerLoja();
+    if (!loja) {
+        return res.status(503).json({ error: "Nenhuma loja cadastrada nesta instalação." });
+    }
+    res.json(lojaPublica(loja));
 });
 
 // Lista de pedidos
@@ -332,6 +472,9 @@ app.post("/api/pedidos", (req, res) => {
         salvarPedidos(pedidos);
         return res.status(201).json({ pedido: pedidoCriado });
     } catch (error) {
+        if (error instanceof ErroArquivoPedidos) {
+            return res.status(500).json({ error: mensagemArquivoPedidos(error) });
+        }
         console.error("Falha ao criar pedido:", error);
         return res.status(500).json({
             error: "Ocorreu um erro ao salvar o pedido. Tente novamente.",
@@ -363,6 +506,9 @@ app.put("/api/pedidos/:id", (req, res) => {
 
         return res.status(200).json({ pedido: pedidoAtualizado });
     } catch (error) {
+        if (error instanceof ErroArquivoPedidos) {
+            return res.status(500).json({ error: mensagemArquivoPedidos(error) });
+        }
         console.error("Falha ao atualizar pedido:", error);
         return res.status(500).json({
             error: "Ocorreu um erro ao salvar o pedido. Tente novamente.",
@@ -386,6 +532,9 @@ app.delete("/api/pedidos/:id", (req, res) => {
         salvarPedidos(pedidos);
         return res.status(200).json({ success: true });
     } catch (error) {
+        if (error instanceof ErroArquivoPedidos) {
+            return res.status(500).json({ error: mensagemArquivoPedidos(error) });
+        }
         console.error("Falha ao excluir pedido:", error);
         return res.status(500).json({
             error: "Ocorreu um erro ao excluir o pedido. Tente novamente.",
@@ -409,6 +558,9 @@ app.use((error, req, res, next) => {
     }
     if (error.type === "entity.too.large") {
         return res.status(413).json({ error: "Os dados enviados são grandes demais." });
+    }
+    if (error instanceof ErroArquivoPedidos) {
+        return res.status(500).json({ error: mensagemArquivoPedidos(error) });
     }
     console.error("Erro inesperado:", error);
     return res.status(error.status || 500).json({

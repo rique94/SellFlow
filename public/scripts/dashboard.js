@@ -28,6 +28,11 @@ async function pegarDados() {
         fetch("/api/loja"),
         fetch("/api/pedidos"),
     ]);
+    // Sem loja cadastrada: volta para a tela de entrada
+    if (respostaLoja.status === 503) {
+        window.location.replace("/");
+        return new Promise(() => {});
+    }
     if (!respostaLoja.ok || !respostaPedidos.ok) {
         throw new Error("Não foi possível carregar os dados da loja.");
     }
