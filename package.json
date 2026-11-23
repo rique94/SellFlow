@@ -1,18 +1,26 @@
 {
   "name": "sellflow",
   "version": "1.0.0",
-  "description": "",
+  "description": "Sistema de gerenciamento de pedidos e vendas para lojas.",
   "main": "./private/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node .",
     "build": "echo SellFlow build successful!"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "pedidos",
+    "vendas",
+    "loja",
+    "express"
+  ],
+  "author": "Henrique Garcias",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
     "express": "^5.2.1"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
