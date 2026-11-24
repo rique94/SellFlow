@@ -138,6 +138,29 @@ async function consultarCep(cep) {
 
 const erro = (campo, mensagem) => ({ erro: { campo, mensagem } });
 
+const normalizarEmail = (valor) => String(valor ?? "").trim().toLowerCase();
+
+// Formato simples (algo@dominio.tld): a confirmação de verdade é o e-mail chegar
+function emailValido(email) {
+    return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+}
+
+/**
+ * Regras da senha (cadastro e redefinição). Retorna { erro } ou null se estiver tudo certo.
+ */
+function validarNovaSenha(senha, confirmacao) {
+    if (typeof senha !== "string" || senha.length < 8 || senha.length > 72) {
+        return erro("senha", "A senha deve ter de 8 a 72 caracteres.");
+    }
+    if (!/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
+        return erro("senha", "A senha precisa ter pelo menos uma letra e um número.");
+    }
+    if (senha !== confirmacao) {
+        return erro("confirmarSenha", "As senhas não são iguais.");
+    }
+    return null;
+}
+
 function texto(valor, maximo) {
     return typeof valor === "string" && valor.trim().length > 0 && valor.trim().length <= maximo;
 }
@@ -197,16 +220,15 @@ async function validarCadastro(dados) {
     if (/^\d+$/.test(login)) {
         return erro("login", "O usuário não pode ter só números (para não confundir com o telefone).");
     }
+    const email = normalizarEmail(dados.email);
+    if (!emailValido(email)) {
+        return erro("email", "Informe um e-mail válido. Ele é usado para recuperar a senha.");
+    }
+    const problemaSenha = validarNovaSenha(dados.senha, dados.confirmarSenha);
+    if (problemaSenha) {
+        return problemaSenha;
+    }
     const senha = dados.senha;
-    if (typeof senha !== "string" || senha.length < 8 || senha.length > 72) {
-        return erro("senha", "A senha deve ter de 8 a 72 caracteres.");
-    }
-    if (!/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
-        return erro("senha", "A senha precisa ter pelo menos uma letra e um número.");
-    }
-    if (senha !== dados.confirmarSenha) {
-        return erro("confirmarSenha", "As senhas não são iguais.");
-    }
 
     // CEP real? (só bloqueia quando o ViaCEP confirma que não existe ou não bate)
     const consulta = await consultarCep(cep);
@@ -243,6 +265,7 @@ async function validarCadastro(dados) {
     return {
         loja: {
             login,
+            email,
             usrName: dados.nomeLoja.trim(),
             pwd: await hashSenha(senha),
             tel: telefone,
@@ -257,6 +280,9 @@ async function validarCadastro(dados) {
 
 module.exports = {
     validarCadastro,
+    validarNovaSenha,
+    normalizarEmail,
+    emailValido,
     consultarCep,
     verificarSenha,
     hashSenha,

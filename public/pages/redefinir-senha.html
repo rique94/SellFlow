@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Nova senha · SellFlow</title>
+    <link rel="stylesheet" href="/styles/log-in.css">
+    <link rel="stylesheet" href="/styles/cadastro.css">
+</head>
+<body>
+    <main class="login-page">
+        <section class="login-card" aria-labelledby="redefinir-title">
+            <header class="login-brand">
+                <span class="login-logo" aria-hidden="true">SF</span>
+                <div>
+                    <h1>SellFlow</h1>
+                    <p>Sistema de pedidos</p>
+                </div>
+            </header>
+
+            <!-- Formulário (aparece depois de conferir o link) -->
+            <div id="redefinir-conteudo" hidden>
+                <div class="login-heading">
+                    <h2 id="redefinir-title">Criar senha nova</h2>
+                    <p>Depois de salvar, entre com a senha nova. As sessões abertas com a senha antiga serão encerradas.</p>
+                </div>
+
+                <form id="form-redefinir" novalidate>
+                    <div class="login-field">
+                        <label for="f_senha">Senha nova</label>
+                        <div class="password-field">
+                            <input type="password" id="f_senha" name="senha" maxlength="72" autocomplete="new-password" required>
+                            <button type="button" class="toggle-password" data-alvo="f_senha" aria-label="Mostrar senha" aria-pressed="false">
+                                <svg class="icon-show" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+                                <svg class="icon-hide" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.9 5.2A9.8 9.8 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6" /></svg>
+                            </button>
+                        </div>
+                        <ul class="regras-senha" id="regras-senha" aria-live="polite">
+                            <li data-regra="tamanho">Pelo menos 8 caracteres</li>
+                            <li data-regra="letra">Uma letra</li>
+                            <li data-regra="numero">Um número</li>
+                        </ul>
+                        <p class="campo-erro-msg" id="erro-senha"></p>
+                    </div>
+
+                    <div class="login-field">
+                        <label for="f_confirmarSenha">Confirmar senha nova</label>
+                        <div class="password-field">
+                            <input type="password" id="f_confirmarSenha" name="confirmarSenha" maxlength="72" autocomplete="new-password" required>
+                            <button type="button" class="toggle-password" data-alvo="f_confirmarSenha" aria-label="Mostrar senha" aria-pressed="false">
+                                <svg class="icon-show" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+                                <svg class="icon-hide" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.9 5.2A9.8 9.8 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6" /></svg>
+                            </button>
+                        </div>
+                        <p class="campo-erro-msg" id="erro-confirmarSenha"></p>
+                    </div>
+
+                    <p id="mensagem" role="alert" aria-live="polite"></p>
+
+                    <button type="submit" class="login-submit" id="redefinir-submit">Salvar senha nova</button>
+                </form>
+            </div>
+
+            <!-- Conferindo o link -->
+            <div class="cadastro-resultado" id="redefinir-carregando">
+                <p>Conferindo o link...</p>
+            </div>
+
+            <!-- Link vencido ou já usado -->
+            <div class="cadastro-resultado" id="redefinir-invalido" hidden>
+                <span class="resultado-icone resultado-aviso" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M12 8v5M12 16.5v.5M10.3 3.9 2.6 17.5A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /></svg>
+                </span>
+                <h2 tabindex="-1" id="invalido-titulo">Este link não vale mais</h2>
+                <p>O link expirou ou já foi usado. Cada link vale por 1 hora e só uma vez. Peça um novo para continuar.</p>
+                <a href="/recuperar-senha" class="login-submit botao-link">Pedir novo link</a>
+            </div>
+
+            <!-- Senha trocada -->
+            <div class="cadastro-resultado" id="redefinir-sucesso" hidden>
+                <span class="resultado-icone resultado-sucesso" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
+                </span>
+                <h2 tabindex="-1" id="sucesso-titulo">Senha alterada!</h2>
+                <p>Agora é só entrar com a senha nova.</p>
+                <a href="/" class="login-submit botao-link">Ir para o login</a>
+            </div>
+        </section>
+
+        <p class="login-footer">SellFlow · gestão de pedidos para lojas</p>
+    </main>
+    <script src="/scripts/redefinir-senha.js"></script>
+</body>
+</html>

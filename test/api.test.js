@@ -11,6 +11,19 @@ const http = require("node:http");
 const { app, preparar } = require("../private/app");
 const { consulta, fecharBanco } = require("../private/banco");
 const { naLoja } = require("../private/dados");
+const { trocarTransporte } = require("../private/email");
+
+// Captura os e-mails em vez de enviar
+const emails = [];
+trocarTransporte(async (mensagem) => emails.push(mensagem));
+
+async function esperarEmail(quantidade) {
+    for (let i = 0; i < 100 && emails.length < quantidade; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.equal(emails.length, quantidade, "o e-mail não chegou");
+    return emails[quantidade - 1];
+}
 
 let servidor;
 let base;
@@ -63,6 +76,7 @@ const cadastro = (extra) => ({
     bairro: "Bela Vista",
     cidade: "São Paulo",
     uf: "SP",
+    email: "lojaa@exemplo.com",
     login: "lojaA",
     senha: "senha1234",
     confirmarSenha: "senha1234",
@@ -86,16 +100,24 @@ test("cadastra duas lojas e recusa usuário ou telefone repetidos", async () => 
     assert.equal(r.json.loja.pwd, undefined, "a senha nunca vai para o navegador");
     assert.equal(r.json.loja.id, undefined, "o id interno não vai para o navegador");
 
-    r = await visitante("POST", "/api/cadastro", cadastro({ login: "lojaB", telefone: "(21) 98765-4321", nomeLoja: "Loja B" }));
+    r = await visitante("POST", "/api/cadastro", cadastro({ login: "lojaB", email: "lojab@exemplo.com", telefone: "(21) 98765-4321", nomeLoja: "Loja B" }));
     assert.equal(r.status, 201, JSON.stringify(r.json));
 
-    r = await visitante("POST", "/api/cadastro", cadastro({ login: "LOJAA", telefone: "(31) 98765-4321" }));
+    r = await visitante("POST", "/api/cadastro", cadastro({ login: "LOJAA", email: "outra@exemplo.com", telefone: "(31) 98765-4321" }));
     assert.equal(r.status, 409);
     assert.equal(r.json.campo, "login");
 
-    r = await visitante("POST", "/api/cadastro", cadastro({ login: "lojaC" }));
+    r = await visitante("POST", "/api/cadastro", cadastro({ login: "lojaC", email: "c@exemplo.com" }));
     assert.equal(r.status, 409);
     assert.equal(r.json.campo, "telefone");
+
+    r = await visitante("POST", "/api/cadastro", cadastro({ login: "lojaD", email: "LojaA@Exemplo.com", telefone: "(41) 98765-4321" }));
+    assert.equal(r.status, 409);
+    assert.equal(r.json.campo, "email");
+
+    r = await visitante("POST", "/api/cadastro", cadastro({ login: "lojaE", email: "sem-arroba", telefone: "(51) 98765-4321" }));
+    assert.equal(r.status, 400);
+    assert.equal(r.json.campo, "email");
 });
 
 test("login por usuário (sem diferenciar maiúsculas) e por telefone com máscara", async () => {
@@ -187,4 +209,49 @@ test("senha errada várias vezes bloqueia aquele usuário", async () => {
     const tentativa = () => visitante("POST", "/api/login", { usr: "lojaB", pwd: "errada123" });
     for (let i = 0; i < 4; i += 1) assert.equal((await tentativa()).status, 401);
     assert.equal((await tentativa()).status, 429);
+});
+
+test("recuperação de senha por e-mail", async () => {
+    const sessaoAntiga = navegador();
+    assert.equal((await sessaoAntiga("POST", "/api/login", { usr: "lojaA", pwd: "senha1234" })).status, 200);
+
+    // E-mail sem conta: mesma resposta, nenhum e-mail enviado
+    assert.equal((await visitante("POST", "/api/senha/esqueci", { email: "ninguem@exemplo.com" })).status, 200);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.equal(emails.length, 0);
+
+    assert.equal((await visitante("POST", "/api/senha/esqueci", { email: " LOJAA@exemplo.com " })).status, 200);
+    const email = await esperarEmail(1);
+    assert.equal(email.para, "lojaa@exemplo.com");
+    const token = email.texto.match(/redefinir-senha#([0-9a-f]{64})/)[1];
+
+    // Pedir de novo logo em seguida não manda outro e-mail
+    await visitante("POST", "/api/senha/esqueci", { email: "lojaa@exemplo.com" });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.equal(emails.length, 1);
+
+    assert.equal((await visitante("POST", "/api/senha/verificar", { token })).json.valido, true);
+    assert.equal((await visitante("POST", "/api/senha/verificar", { token: "0".repeat(64) })).json.valido, false);
+
+    // Senha fraca é recusada e o link continua valendo
+    let r = await visitante("POST", "/api/senha/redefinir", { token, senha: "fraca", confirmarSenha: "fraca" });
+    assert.equal(r.status, 400);
+    assert.equal(r.json.campo, "senha");
+
+    r = await visitante("POST", "/api/senha/redefinir", { token, senha: "novaSenha99", confirmarSenha: "novaSenha99" });
+    assert.equal(r.status, 200);
+
+    // O link vale uma vez só
+    r = await visitante("POST", "/api/senha/redefinir", { token, senha: "outra12345", confirmarSenha: "outra12345" });
+    assert.equal(r.json.expirado, true);
+
+    // A sessão aberta com a senha antiga caiu; a senha antiga não entra mais e a nova entra
+    assert.equal((await sessaoAntiga("GET", "/api/pedidos")).status, 401);
+    assert.equal((await navegador()("POST", "/api/login", { usr: "lojaA", pwd: "senha1234" })).status, 401);
+    assert.equal((await navegador()("POST", "/api/login", { usr: "lojaA", pwd: "novaSenha99" })).status, 200);
+});
+
+test("as páginas de recuperação abrem sem login", async () => {
+    assert.equal((await visitante("GET", "/recuperar-senha")).status, 200);
+    assert.equal((await visitante("GET", "/redefinir-senha")).status, 200);
 });

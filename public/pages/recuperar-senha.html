@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Recuperar senha · SellFlow</title>
+    <link rel="stylesheet" href="/styles/log-in.css">
+    <link rel="stylesheet" href="/styles/cadastro.css">
+</head>
+<body>
+    <main class="login-page">
+        <section class="login-card" aria-labelledby="recuperar-title">
+            <header class="login-brand">
+                <span class="login-logo" aria-hidden="true">SF</span>
+                <div>
+                    <h1>SellFlow</h1>
+                    <p>Sistema de pedidos</p>
+                </div>
+            </header>
+
+            <!-- Formulário -->
+            <div id="recuperar-conteudo">
+                <div class="login-heading">
+                    <h2 id="recuperar-title">Esqueceu a senha?</h2>
+                    <p>Digite o e-mail da loja. Vamos enviar um link para você criar uma senha nova.</p>
+                </div>
+
+                <form id="form-recuperar" novalidate>
+                    <div class="login-field">
+                        <label for="f_email">E-mail da loja</label>
+                        <input type="email" id="f_email" name="email" maxlength="254" placeholder="contato@sualoja.com.br" autocomplete="email" autocapitalize="none" spellcheck="false" autofocus required>
+                    </div>
+
+                    <p id="mensagem" role="alert" aria-live="polite"></p>
+
+                    <button type="submit" class="login-submit" id="recuperar-submit">Enviar link</button>
+                </form>
+
+                <a href="/" class="login-forgot">← Voltar ao login</a>
+            </div>
+
+            <!-- Enviado -->
+            <div class="cadastro-resultado" id="recuperar-enviado" hidden>
+                <span class="resultado-icone resultado-sucesso" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M3 6.5h18v11H3zM3.5 7l8.5 6.5L20.5 7" /></svg>
+                </span>
+                <h2 tabindex="-1" id="enviado-titulo">Confira seu e-mail</h2>
+                <p id="enviado-texto">Se houver uma loja com este e-mail, enviamos um link para criar uma senha nova.</p>
+                <p>O link vale por 1 hora. Se não chegar em alguns minutos, olhe a caixa de spam.</p>
+                <a href="/" class="login-submit botao-link">Voltar ao login</a>
+            </div>
+        </section>
+
+        <p class="login-footer">SellFlow · gestão de pedidos para lojas</p>
+    </main>
+    <script src="/scripts/recuperar-senha.js"></script>
+</body>
+</html>

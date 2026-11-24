@@ -2,6 +2,7 @@
  * Lojas e pedidos no banco de dados.
  * Cada loja só enxerga os próprios pedidos: toda consulta de pedido filtra por loja_id.
  */
+const crypto = require("crypto");
 const { consulta, transacao } = require("./banco");
 const { verificarPrazos } = require("./ciclo");
 
@@ -16,6 +17,7 @@ function lojaDoBanco(linha) {
         ...linha.dados,
         id: linha.id,
         login: linha.login,
+        email: linha.email || "",
         usrName: linha.nome,
         tel: linha.tel,
         pwd: linha.pwd,
@@ -56,19 +58,92 @@ async function buscarLojaParaLogin(digitado, somenteDigitos) {
  * com o mesmo usuário ou telefone (o banco garante isso mesmo com dois cadastros ao mesmo tempo).
  */
 async function criarLoja(loja) {
-    const { login, usrName, tel, pwd, criadoEm, ...dados } = loja;
+    const { login, email, usrName, tel, pwd, criadoEm, ...dados } = loja;
     try {
         const [linha] = await consulta(
-            `INSERT INTO lojas (login, tel, pwd, nome, dados) VALUES ($1, $2, $3, $4, $5::jsonb) RETURNING *`,
-            [login, tel, pwd, usrName, JSON.stringify(dados)],
+            `INSERT INTO lojas (login, email, tel, pwd, nome, dados) VALUES ($1, $2, $3, $4, $5, $6::jsonb) RETURNING *`,
+            [login, email, tel, pwd, usrName, JSON.stringify(dados)],
         );
         return { loja: lojaDoBanco(linha) };
     } catch (error) {
         if (error.code === "23505") {
-            return { conflito: String(error.constraint || error.message).includes("tel") ? "telefone" : "login" };
+            const indice = String(error.constraint || error.message);
+            const conflito = indice.includes("email") ? "email" : indice.includes("tel") ? "telefone" : "login";
+            return { conflito };
         }
         throw error;
     }
+}
+
+async function buscarLojaPorEmail(email) {
+    const [linha] = await consulta("SELECT * FROM lojas WHERE lower(email) = lower($1)", [email]);
+    return lojaDoBanco(linha);
+}
+
+/* ================= Redefinição de senha ================= */
+
+const MINUTOS_LINK = 60; // o link do e-mail vale por 1 hora
+const MINUTOS_ENTRE_EMAILS = 2; // evita encher a caixa de entrada da loja com pedidos repetidos
+
+const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
+
+/**
+ * Cria um link de redefinição para a loja e invalida os anteriores.
+ * Retorna o token (que vai só no e-mail) ou null se já foi pedido um link há pouco.
+ */
+async function criarRedefinicao(lojaId) {
+    return transacao(async (tx) => {
+        await tx.consulta("SELECT id FROM lojas WHERE id = $1 FOR UPDATE", [lojaId]);
+        const recentes = await tx.consulta(
+            `SELECT 1 FROM redefinicoes_senha
+             WHERE loja_id = $1 AND criado_em > now() - interval '${MINUTOS_ENTRE_EMAILS} minutes'`,
+            [lojaId],
+        );
+        if (recentes.length > 0) return null;
+
+        await tx.consulta("DELETE FROM redefinicoes_senha WHERE loja_id = $1", [lojaId]);
+        const token = crypto.randomBytes(32).toString("hex");
+        await tx.consulta(
+            `INSERT INTO redefinicoes_senha (token_hash, loja_id, expira_em)
+             VALUES ($1, $2, now() + interval '${MINUTOS_LINK} minutes')`,
+            [hashToken(token), lojaId],
+        );
+        return token;
+    });
+}
+
+// O link ainda vale? (não usado e dentro do prazo)
+async function redefinicaoValida(token) {
+    if (!/^[0-9a-f]{64}$/.test(String(token))) return false;
+    const linhas = await consulta(
+        "SELECT 1 FROM redefinicoes_senha WHERE token_hash = $1 AND usado_em IS NULL AND expira_em > now()",
+        [hashToken(token)],
+    );
+    return linhas.length > 0;
+}
+
+/**
+ * Troca a senha usando o link. O link vale uma vez só, e todas as sessões abertas da loja
+ * são encerradas (quem estava usando a senha antiga sai). Retorna true se deu certo.
+ */
+async function redefinirSenha(token, novoHash) {
+    if (!/^[0-9a-f]{64}$/.test(String(token))) return false;
+    return transacao(async (tx) => {
+        const [link] = await tx.consulta(
+            `SELECT loja_id FROM redefinicoes_senha
+             WHERE token_hash = $1 AND usado_em IS NULL AND expira_em > now()
+             FOR UPDATE`,
+            [hashToken(token)],
+        );
+        if (!link) return false;
+
+        await tx.consulta("UPDATE lojas SET pwd = $2 WHERE id = $1", [link.loja_id, novoHash]);
+        await tx.consulta("UPDATE redefinicoes_senha SET usado_em = now() WHERE loja_id = $1 AND usado_em IS NULL", [
+            link.loja_id,
+        ]);
+        await tx.consulta("DELETE FROM sessoes WHERE loja_id = $1", [link.loja_id]);
+        return true;
+    });
 }
 
 /* ================= Pedidos ================= */
@@ -185,6 +260,11 @@ module.exports = {
     buscarLojaPorId,
     buscarLojaParaLogin,
     criarLoja,
+    buscarLojaPorEmail,
+    criarRedefinicao,
+    redefinicaoValida,
+    redefinirSenha,
+    MINUTOS_LINK,
     naLoja,
     manutencaoGeral,
     ErroLojaInexistente,

@@ -6,7 +6,7 @@ const campo = (nome) => document.getElementById(`f_${nome}`);
 
 const CAMPOS = [
     "nomeLoja", "telefone", "cnpj", "cep", "logradouro", "numero", "complemento",
-    "bairro", "cidade", "uf", "login", "senha", "confirmarSenha",
+    "bairro", "cidade", "uf", "email", "login", "senha", "confirmarSenha",
 ];
 
 /* ================= Mensagens ================= */
@@ -155,6 +155,7 @@ function validar(dados) {
     if (!dados.bairro) return ["bairro", "Informe o bairro."];
     if (!dados.cidade) return ["cidade", "Informe a cidade."];
     if (!dados.uf) return ["uf", "Selecione o estado."];
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(dados.email)) return ["email", "Informe um e-mail válido."];
     if (!/^[A-Za-z0-9._-]{3,30}$/.test(dados.login)) return ["login", "Use de 3 a 30 caracteres: letras, números, ponto, hífen ou _ (sem espaços)."];
     if (!Object.values(regras).every((regra) => regra(dados.senha))) return ["senha", "A senha precisa ter 8 caracteres, uma letra e um número."];
     if (dados.senha !== dados.confirmarSenha) return ["confirmarSenha", "As senhas não são iguais."];

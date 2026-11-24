@@ -19,6 +19,19 @@ CREATE TABLE IF NOT EXISTS lojas (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS lojas_login_unico ON lojas (lower(login));
 CREATE UNIQUE INDEX IF NOT EXISTS lojas_tel_unico ON lojas (tel);
+-- E-mail para recuperar a senha (lojas criadas antes dele ficam sem, até cadastrarem um)
+ALTER TABLE lojas ADD COLUMN IF NOT EXISTS email TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS lojas_email_unico ON lojas (lower(email));
+
+-- Links de redefinição de senha: só o hash do token, válido por pouco tempo e uma vez só
+CREATE TABLE IF NOT EXISTS redefinicoes_senha (
+    token_hash TEXT PRIMARY KEY,
+    loja_id    INTEGER NOT NULL REFERENCES lojas (id) ON DELETE CASCADE,
+    criado_em  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expira_em  TIMESTAMPTZ NOT NULL,
+    usado_em   TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS redefinicoes_por_loja ON redefinicoes_senha (loja_id, criado_em);
 
 -- Pedido com arquivado_em preenchido = está nos finalizados (ver ciclo.js)
 CREATE TABLE IF NOT EXISTS pedidos (

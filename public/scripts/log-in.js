@@ -81,13 +81,3 @@ togglePassword.addEventListener("click", () => {
     togglePassword.setAttribute("aria-label", mostrar ? "Esconder senha" : "Mostrar senha");
     passwd.focus();
 });
-
-// Ainda não há recuperação automática de senha (seria preciso enviar e-mail ou SMS)
-document.getElementById("forgot-password").addEventListener("click", (event) => {
-    event.preventDefault();
-    limparMensagem();
-    mostrarMensagem(
-        "A recuperação de senha ainda não é automática. Fale com o suporte do SellFlow para redefinir a sua.",
-        "info",
-    );
-});

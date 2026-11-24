@@ -103,6 +103,12 @@
                         <legend><span class="cadastro-numero">03</span> Acesso ao sistema</legend>
                         <div class="cadastro-grid">
                             <div class="login-field campo-largo">
+                                <label for="f_email">E-mail <span class="obrigatorio">*</span></label>
+                                <input type="email" id="f_email" name="email" maxlength="254" placeholder="contato@sualoja.com.br" autocomplete="email" autocapitalize="none" spellcheck="false" required>
+                                <p class="campo-dica">Usado para recuperar a senha se você esquecer.</p>
+                                <p class="campo-erro-msg" id="erro-email"></p>
+                            </div>
+                            <div class="login-field campo-largo">
                                 <label for="f_login">Usuário <span class="obrigatorio">*</span></label>
                                 <input type="text" id="f_login" name="login" maxlength="30" placeholder="Ex.: rioNegro" autocomplete="username" autocapitalize="none" spellcheck="false" required>
                                 <p class="campo-dica">Usado para entrar no sistema. Também dá para entrar com o telefone.</p>

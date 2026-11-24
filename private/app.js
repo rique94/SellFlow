@@ -1,10 +1,20 @@
 // Primeiro a configuração: ela fixa o fuso horário antes de qualquer data ser criada
-const { NA_NUVEM, PORT, PROXIES_CONFIAVEIS } = require("./config");
+const { NA_NUVEM, PORT, PROXIES_CONFIAVEIS, URL_DO_SITE } = require("./config");
 const crypto = require("crypto");
 const http = require("http");
 const path = require("path");
 const express = require("express");
-const { validarCadastro, consultarCep, verificarSenha, hashSenha, somenteDigitos } = require("./cadastro");
+const {
+    validarCadastro,
+    validarNovaSenha,
+    normalizarEmail,
+    emailValido,
+    consultarCep,
+    verificarSenha,
+    hashSenha,
+    somenteDigitos,
+} = require("./cadastro");
+const { enviarEmail } = require("./email");
 const {
     protegerOrigem,
     cabecalhosSeguranca,
@@ -26,6 +36,11 @@ const {
     buscarLojaPorId,
     buscarLojaParaLogin,
     criarLoja,
+    buscarLojaPorEmail,
+    criarRedefinicao,
+    redefinicaoValida,
+    redefinirSenha,
+    MINUTOS_LINK,
     naLoja,
     manutencaoGeral,
     ErroLojaInexistente,
@@ -288,7 +303,7 @@ app.use("/pages", (req, res) => res.status(404).type("text/plain").send("Não en
 app.use(express.static(path.join(__dirname, "../public"), { index: false }));
 
 // Rotas da API liberadas sem login
-const ROTAS_PUBLICAS = ["/login", "/logout", "/cadastro", "/cep"];
+const ROTAS_PUBLICAS = ["/login", "/logout", "/cadastro", "/cep", "/senha"];
 const casaRota = (lista, caminho) => lista.some((rota) => caminho === rota || caminho.startsWith(`${rota}/`));
 
 // O resto da API exige login; a partir daqui, req.lojaId é a loja logada
@@ -316,9 +331,10 @@ app.get("/novo-pedido", paginaProtegida("novo-pedido.html"));
 app.get("/detalhes-pedido/:id", paginaProtegida("detalhes-pedido.html"));
 app.get("/metricas", paginaProtegida("metricas.html"));
 
-app.get("/cadastro", (req, res) => {
-    res.sendFile(path.join(PASTA_PAGINAS, "cadastro.html"));
-});
+// Páginas abertas (sem login)
+app.get("/cadastro", (req, res) => res.sendFile(path.join(PASTA_PAGINAS, "cadastro.html")));
+app.get("/recuperar-senha", (req, res) => res.sendFile(path.join(PASTA_PAGINAS, "recuperar-senha.html")));
+app.get("/redefinir-senha", (req, res) => res.sendFile(path.join(PASTA_PAGINAS, "redefinir-senha.html")));
 
 /* ================= API ================= */
 
@@ -409,9 +425,83 @@ app.post("/api/cadastro", limiteCadastro, async (req, res) => {
     if (resultado.conflito === "telefone") {
         return res.status(409).json({ error: "Já existe uma loja cadastrada com este telefone.", campo: "telefone" });
     }
+    if (resultado.conflito === "email") {
+        return res.status(409).json({ error: "Já existe uma loja cadastrada com este e-mail.", campo: "email" });
+    }
 
     console.log(`Loja ${resultado.loja.id} cadastrada.`);
     return res.status(201).json({ loja: lojaPublica(resultado.loja) });
+});
+
+/* ================= Recuperação de senha ================= */
+
+const escaparHtml = (texto) =>
+    String(texto).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+async function enviarLinkRedefinicao(email) {
+    const loja = await buscarLojaPorEmail(email);
+    if (!loja) return;
+    if (!URL_DO_SITE) {
+        console.error("Defina APP_URL para enviar os links de redefinição de senha.");
+        return;
+    }
+    const token = await criarRedefinicao(loja.id);
+    if (!token) return; // já foi enviado um link há pouco
+
+    // O token vai depois do # : essa parte do endereço não é enviada ao servidor nem aparece em logs
+    const link = `${URL_DO_SITE}/redefinir-senha#${token}`;
+    const nome = loja.usrName;
+    await enviarEmail({
+        para: loja.email,
+        assunto: `Redefinir a senha da loja ${nome} · SellFlow`,
+        texto:
+            `Olá!\n\nRecebemos um pedido para redefinir a senha da loja "${nome}" (usuário ${loja.login}) no SellFlow.\n\n` +
+            `Para criar uma senha nova, abra o link abaixo. Ele vale por ${MINUTOS_LINK} minutos e só pode ser usado uma vez:\n\n${link}\n\n` +
+            `Se não foi você, ignore este e-mail: a sua senha atual continua valendo.`,
+        html:
+            `<p>Olá!</p><p>Recebemos um pedido para redefinir a senha da loja <strong>${escaparHtml(nome)}</strong> ` +
+            `(usuário ${escaparHtml(loja.login)}) no SellFlow.</p>` +
+            `<p><a href="${escaparHtml(link)}">Criar uma senha nova</a></p>` +
+            `<p>O link vale por ${MINUTOS_LINK} minutos e só pode ser usado uma vez.</p>` +
+            `<p>Se não foi você, ignore este e-mail: a sua senha atual continua valendo.</p>`,
+    });
+    console.log(`Link de redefinição de senha enviado para a loja ${loja.id}.`);
+}
+
+const limiteEsqueci = limitarPorIp(5, 15 * 60 * 1000, "Muitos pedidos de recuperação. Aguarde alguns minutos.");
+const limiteRedefinir = limitarPorIp(20, 15 * 60 * 1000, "Muitas tentativas. Aguarde alguns minutos.");
+
+/*
+ * Pede o link por e-mail. A resposta é sempre a mesma e sai antes do envio, exista a loja ou não:
+ * assim ninguém descobre por aqui quais e-mails têm conta.
+ */
+app.post("/api/senha/esqueci", limiteEsqueci, (req, res) => {
+    const email = normalizarEmail(req.body?.email);
+    if (!emailValido(email)) {
+        return res.status(400).json({ error: "Informe um e-mail válido." });
+    }
+    res.json({ ok: true });
+    enviarLinkRedefinicao(email).catch((error) =>
+        console.error("Não foi possível enviar o e-mail de redefinição:", error.message),
+    );
+});
+
+// O link ainda vale? (a página mostra o aviso de link vencido antes de a pessoa digitar a senha)
+app.post("/api/senha/verificar", limiteRedefinir, async (req, res) => {
+    res.json({ valido: await redefinicaoValida(req.body?.token) });
+});
+
+app.post("/api/senha/redefinir", limiteRedefinir, async (req, res) => {
+    const { token, senha, confirmarSenha } = req.body || {};
+    const problema = validarNovaSenha(senha, confirmarSenha);
+    if (problema) {
+        return res.status(400).json({ error: problema.erro.mensagem, campo: problema.erro.campo });
+    }
+    const trocou = await redefinirSenha(token, await hashSenha(senha));
+    if (!trocou) {
+        return res.status(400).json({ error: "Este link expirou ou já foi usado. Peça um novo.", expirado: true });
+    }
+    return res.json({ ok: true });
 });
 
 // Dados da loja logada
