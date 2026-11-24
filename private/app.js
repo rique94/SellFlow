@@ -21,6 +21,7 @@ const {
     criarSessao,
     lojaDaSessao,
     encerrarSessao,
+    encerrarOutrasSessoes,
     limparSessoesVencidas,
     segundosBloqueado,
     registrarErroLogin,
@@ -38,6 +39,7 @@ const {
     criarLoja,
     buscarLojaPorEmail,
     atualizarEmail,
+    trocarSenha,
     criarRedefinicao,
     redefinicaoValida,
     redefinirSenha,
@@ -516,34 +518,42 @@ app.get("/api/loja", async (req, res) => {
 });
 
 /*
- * Cadastrar ou trocar o e-mail da loja logada. Pede a senha atual: com uma sessão esquecida
- * aberta, ninguém consegue trocar o e-mail e depois usar "Esqueci a senha" para tomar a conta.
- * Senha errada conta para o mesmo bloqueio do login.
+ * Ações sensíveis da loja logada (trocar e-mail ou senha) pedem a senha atual: com uma sessão
+ * esquecida aberta, ninguém consegue tomar a conta. Senha errada conta para o mesmo bloqueio do
+ * login. Retorna a loja se a senha conferir; senão já respondeu e retorna null.
  */
-app.put("/api/loja/email", async (req, res) => {
+async function conferirSenhaAtual(req, res, senha, campo) {
     const loja = await buscarLojaPorId(req.lojaId);
     if (!loja) {
-        return res.status(401).json({ error: "Faça login para continuar." });
+        res.status(401).json({ error: "Faça login para continuar." });
+        return null;
     }
-
     const espera = segundosBloqueado(req.ip, loja.login);
     if (espera) {
-        return respostaBloqueio(res, espera, `Muitas tentativas erradas. Tente de novo em ${textoEspera(espera)}.`);
+        respostaBloqueio(res, espera, `Muitas tentativas erradas. Tente de novo em ${textoEspera(espera)}.`);
+        return null;
     }
+    if (await verificarSenha(typeof senha === "string" ? senha : "", loja.pwd)) {
+        return loja;
+    }
+    registrarErroLogin(req.ip, loja.login);
+    const bloqueio = segundosBloqueado(req.ip, loja.login);
+    if (bloqueio) {
+        respostaBloqueio(res, bloqueio, `Senha incorreta. Por segurança, aguarde ${textoEspera(bloqueio)} para tentar de novo.`);
+    } else {
+        res.status(400).json({ error: "Senha incorreta.", campo });
+    }
+    return null;
+}
 
+// Cadastrar ou trocar o e-mail da loja logada
+app.put("/api/loja/email", async (req, res) => {
     const email = normalizarEmail(req.body?.email);
     if (!emailValido(email)) {
         return res.status(400).json({ error: "Informe um e-mail válido.", campo: "email" });
     }
-    const senha = typeof req.body?.senha === "string" ? req.body.senha : "";
-    if (!(await verificarSenha(senha, loja.pwd))) {
-        registrarErroLogin(req.ip, loja.login);
-        const bloqueio = segundosBloqueado(req.ip, loja.login);
-        if (bloqueio) {
-            return respostaBloqueio(res, bloqueio, `Senha incorreta. Por segurança, aguarde ${textoEspera(bloqueio)} para tentar de novo.`);
-        }
-        return res.status(400).json({ error: "Senha incorreta.", campo: "senha" });
-    }
+    const loja = await conferirSenhaAtual(req, res, req.body?.senha, "senha");
+    if (!loja) return;
 
     if (email === loja.email) {
         return res.json({ loja: lojaPublica(loja) });
@@ -570,6 +580,44 @@ app.put("/api/loja/email", async (req, res) => {
                 `A partir de agora, os links de redefinição de senha vão para o endereço novo.</p>` +
                 `<p>Se não foi você, entre no SellFlow, troque o e-mail de volta e fale com o suporte.</p>`,
         }).catch((error) => console.error("Não foi possível avisar o e-mail antigo:", error.message));
+    }
+});
+
+/*
+ * Trocar a senha da loja logada. As sessões abertas em outros navegadores caem (quem tinha a
+ * senha antiga sai); a sessão de quem trocou continua. Se a loja tem e-mail, recebe um aviso.
+ */
+app.put("/api/loja/senha", async (req, res) => {
+    const { senhaAtual, senha, confirmarSenha } = req.body || {};
+    const problema = validarNovaSenha(senha, confirmarSenha);
+    if (problema) {
+        return res.status(400).json({ error: problema.erro.mensagem, campo: problema.erro.campo });
+    }
+    const loja = await conferirSenhaAtual(req, res, senhaAtual, "senhaAtual");
+    if (!loja) return;
+    if (senha === senhaAtual) {
+        return res.status(400).json({ error: "A senha nova precisa ser diferente da atual.", campo: "senha" });
+    }
+
+    await trocarSenha(loja.id, await hashSenha(senha));
+    await encerrarOutrasSessoes(req, loja.id);
+    console.log(`Senha da loja ${loja.id} alterada.`);
+    res.json({ ok: true });
+
+    if (loja.email) {
+        enviarEmail({
+            para: loja.email,
+            assunto: `A senha da loja ${loja.usrName} foi alterada · SellFlow`,
+            texto:
+                `Olá!\n\nA senha da loja "${loja.usrName}" (usuário ${loja.login}) no SellFlow acabou de ser alterada. ` +
+                `As sessões abertas em outros aparelhos foram encerradas.\n\n` +
+                `Se não foi você, use "Esqueceu sua senha?" na tela de login para criar uma senha nova agora.`,
+            html:
+                `<p>Olá!</p><p>A senha da loja <strong>${escaparHtml(loja.usrName)}</strong> ` +
+                `(usuário ${escaparHtml(loja.login)}) no SellFlow acabou de ser alterada. ` +
+                `As sessões abertas em outros aparelhos foram encerradas.</p>` +
+                `<p>Se não foi você, use <strong>Esqueceu sua senha?</strong> na tela de login para criar uma senha nova agora.</p>`,
+        }).catch((error) => console.error("Não foi possível avisar sobre a troca de senha:", error.message));
     }
 });
 

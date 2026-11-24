@@ -5,9 +5,9 @@ const campo = (nome) => document.getElementById(`f_${nome}`);
 
 /* ================= Mensagens ================= */
 
-function mostrarMensagem(texto, tipo) {
-    msg.textContent = texto;
-    msg.className = tipo;
+function mostrarMensagem(texto, tipo, saida = msg) {
+    saida.textContent = texto;
+    saida.className = `conta-mensagem ${tipo}`.trim();
 }
 
 function erroCampo(nome, texto) {
@@ -103,6 +103,86 @@ form.addEventListener("submit", async (event) => {
         mostrarMensagem("Não foi possível conectar ao sistema. Verifique sua internet.", "erro");
     }
     setCarregando(false);
+});
+
+/* ================= Trocar senha ================= */
+
+const formSenha = document.getElementById("form-senha");
+const msgSenha = document.getElementById("mensagem-senha");
+const botaoSenha = document.getElementById("salvar-senha");
+const CAMPOS_SENHA = ["trocaAtual", "trocaNova", "trocaConfirmar"];
+// Nome do campo na resposta do servidor -> campo da tela
+const CAMPO_DA_API = { senhaAtual: "trocaAtual", senha: "trocaNova", confirmarSenha: "trocaConfirmar" };
+
+const regras = {
+    tamanho: (s) => s.length >= 8,
+    letra: (s) => /[A-Za-z]/.test(s),
+    numero: (s) => /\d/.test(s),
+};
+
+function atualizarRegras() {
+    const senha = campo("trocaNova").value;
+    document.querySelectorAll("#regras-senha li").forEach((li) => {
+        li.classList.toggle("ok", regras[li.dataset.regra](senha));
+    });
+}
+
+CAMPOS_SENHA.forEach((nome) => campo(nome).addEventListener("input", () => erroCampo(nome, "")));
+campo("trocaNova").addEventListener("input", atualizarRegras);
+
+function setCarregandoSenha(carregando) {
+    botaoSenha.disabled = carregando;
+    botaoSenha.textContent = carregando ? "Trocando..." : "Trocar senha";
+}
+
+formSenha.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    mostrarMensagem("", "", msgSenha);
+    CAMPOS_SENHA.forEach((nome) => erroCampo(nome, ""));
+
+    const senhaAtual = campo("trocaAtual").value;
+    const senha = campo("trocaNova").value;
+    const confirmarSenha = campo("trocaConfirmar").value;
+    const problema = !senhaAtual
+        ? ["trocaAtual", "Digite a sua senha atual."]
+        : !Object.values(regras).every((regra) => regra(senha))
+          ? ["trocaNova", "A senha precisa ter 8 caracteres, uma letra e um número."]
+          : senha !== confirmarSenha
+            ? ["trocaConfirmar", "As senhas não são iguais."]
+            : senha === senhaAtual
+              ? ["trocaNova", "A senha nova precisa ser diferente da atual."]
+              : null;
+    if (problema) {
+        erroCampo(...problema);
+        campo(problema[0]).focus();
+        return;
+    }
+
+    setCarregandoSenha(true);
+    try {
+        const resposta = await fetch("/api/loja/senha", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ senhaAtual, senha, confirmarSenha }),
+        });
+        const resultado = await resposta.json().catch(() => ({}));
+        const campoComErro = CAMPO_DA_API[resultado.campo];
+
+        if (resposta.ok) {
+            formSenha.reset();
+            atualizarRegras();
+            mostrarMensagem("Senha trocada. Nos outros aparelhos, a loja vai precisar entrar com a senha nova.", "sucesso", msgSenha);
+        } else if (campoComErro) {
+            erroCampo(campoComErro, resultado.error);
+            campo(campoComErro).select();
+            campo(campoComErro).focus();
+        } else {
+            mostrarMensagem(resultado.error || "Não foi possível trocar a senha. Tente novamente.", "erro", msgSenha);
+        }
+    } catch {
+        mostrarMensagem("Não foi possível conectar ao sistema. Verifique sua internet.", "erro", msgSenha);
+    }
+    setCarregandoSenha(false);
 });
 
 /* ================= Início ================= */

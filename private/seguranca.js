@@ -127,6 +127,12 @@ async function encerrarSessao(req, res) {
     definirCookie(res, "", 0);
 }
 
+// Encerra as sessões da loja em outros navegadores, mantendo a deste
+async function encerrarOutrasSessoes(req, lojaId) {
+    const token = lerCookie(req, COOKIE) || "";
+    await consulta("DELETE FROM sessoes WHERE loja_id = $1 AND token_hash <> $2", [lojaId, hashToken(token)]);
+}
+
 async function limparSessoesVencidas() {
     await consulta(`DELETE FROM sessoes WHERE ultimo_uso < now() - interval '${HORAS_SESSAO} hours'`);
 }
@@ -255,6 +261,7 @@ module.exports = {
     criarSessao,
     lojaDaSessao,
     encerrarSessao,
+    encerrarOutrasSessoes,
     limparSessoesVencidas,
     segundosBloqueado,
     registrarErroLogin,

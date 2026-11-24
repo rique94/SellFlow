@@ -86,6 +86,14 @@ async function atualizarEmail(lojaId, email) {
     }
 }
 
+// Troca a senha (já em hash) e invalida links de redefinição pendentes da loja
+async function trocarSenha(lojaId, novoHash) {
+    await transacao(async (tx) => {
+        await tx.consulta("UPDATE lojas SET pwd = $2 WHERE id = $1", [lojaId, novoHash]);
+        await tx.consulta("DELETE FROM redefinicoes_senha WHERE loja_id = $1", [lojaId]);
+    });
+}
+
 async function buscarLojaPorEmail(email) {
     const [linha] = await consulta("SELECT * FROM lojas WHERE lower(email) = lower($1)", [email]);
     return lojaDoBanco(linha);
@@ -273,6 +281,7 @@ module.exports = {
     criarLoja,
     buscarLojaPorEmail,
     atualizarEmail,
+    trocarSenha,
     criarRedefinicao,
     redefinicaoValida,
     redefinirSenha,

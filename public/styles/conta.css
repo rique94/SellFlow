@@ -132,6 +132,31 @@ main.conta {
     border-color: #d64545;
 }
 
+.conta-campo-largo {
+    grid-column: 1 / -1;
+}
+
+.conta-regras {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    list-style: none;
+    color: #6c7f9f;
+    font-size: 12px;
+}
+
+.conta-regras li::before {
+    content: "○ ";
+}
+
+.conta-regras li.ok {
+    color: #17663a;
+}
+
+.conta-regras li.ok::before {
+    content: "✓ ";
+}
+
 .conta-dica-campo {
     color: #6c7f9f;
     font-size: 12px;
@@ -146,24 +171,24 @@ main.conta {
     display: none;
 }
 
-#mensagem {
+.conta-mensagem {
     margin-top: 16px;
     padding: 10px 14px;
     border-radius: 8px;
     font-size: 13px;
 }
 
-#mensagem:empty {
+.conta-mensagem:empty {
     display: none;
 }
 
-#mensagem.sucesso {
+.conta-mensagem.sucesso {
     border: 1px solid #a7dcb9;
     background: #effaf3;
     color: #17663a;
 }
 
-#mensagem.erro {
+.conta-mensagem.erro {
     border: 1px solid #f1b7b0;
     background: #fff5f4;
     color: #8a1c12;

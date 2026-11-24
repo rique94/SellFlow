@@ -299,3 +299,41 @@ test("loja logada cadastra e troca o e-mail (com a senha atual)", async () => {
     await visitante("POST", "/api/senha/esqueci", { email: "outro@exemplo.com" });
     assert.equal((await esperarEmail(antes + 2)).para, "outro@exemplo.com");
 });
+
+test("loja logada troca a senha e as outras sessões caem", async () => {
+    const aqui = navegador();
+    const outroAparelho = navegador();
+    assert.equal((await aqui("POST", "/api/login", { usr: "lojaF", pwd: "senha1234" })).status, 200);
+    assert.equal((await outroAparelho("POST", "/api/login", { usr: "lojaF", pwd: "senha1234" })).status, 200);
+
+    assert.equal((await visitante("PUT", "/api/loja/senha", { senhaAtual: "senha1234", senha: "nova12345", confirmarSenha: "nova12345" })).status, 401);
+
+    let r = await aqui("PUT", "/api/loja/senha", { senhaAtual: "errada123", senha: "nova12345", confirmarSenha: "nova12345" });
+    assert.equal(r.status, 400);
+    assert.equal(r.json.campo, "senhaAtual");
+
+    r = await aqui("PUT", "/api/loja/senha", { senhaAtual: "senha1234", senha: "fraca", confirmarSenha: "fraca" });
+    assert.equal(r.json.campo, "senha");
+
+    r = await aqui("PUT", "/api/loja/senha", { senhaAtual: "senha1234", senha: "nova12345", confirmarSenha: "outra1234" });
+    assert.equal(r.json.campo, "confirmarSenha");
+
+    r = await aqui("PUT", "/api/loja/senha", { senhaAtual: "senha1234", senha: "senha1234", confirmarSenha: "senha1234" });
+    assert.equal(r.status, 400, "a senha nova precisa ser diferente");
+
+    const antes = emails.length;
+    r = await aqui("PUT", "/api/loja/senha", { senhaAtual: "senha1234", senha: "nova12345", confirmarSenha: "nova12345" });
+    assert.equal(r.status, 200);
+
+    // Quem trocou continua; o outro aparelho sai
+    assert.equal((await aqui("GET", "/api/pedidos")).status, 200);
+    assert.equal((await outroAparelho("GET", "/api/pedidos")).status, 401);
+
+    assert.equal((await navegador()("POST", "/api/login", { usr: "lojaF", pwd: "senha1234" })).status, 401);
+    assert.equal((await navegador()("POST", "/api/login", { usr: "lojaF", pwd: "nova12345" })).status, 200);
+
+    // A loja recebe um aviso no e-mail
+    const aviso = await esperarEmail(antes + 1);
+    assert.equal(aviso.para, "outro@exemplo.com");
+    assert.match(aviso.assunto, /senha .* foi alterada/);
+});

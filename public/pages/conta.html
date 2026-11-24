@@ -57,9 +57,48 @@
                         </div>
                     </div>
 
-                    <p id="mensagem" role="status" aria-live="polite"></p>
+                    <p class="conta-mensagem" id="mensagem" role="status" aria-live="polite"></p>
 
                     <button type="submit" class="conta-botao" id="salvar-email">Salvar e-mail</button>
+                </form>
+            </section>
+
+            <!-- Trocar senha -->
+            <section class="conta-cartao" aria-labelledby="titulo-senha">
+                <div class="conta-cartao-topo">
+                    <div>
+                        <h3 id="titulo-senha">Trocar senha</h3>
+                        <p class="conta-dica">Depois de trocar, a loja sai dos outros aparelhos onde estava logada. Aqui você continua.</p>
+                    </div>
+                </div>
+
+                <form id="form-senha" novalidate>
+                    <div class="conta-grid">
+                        <div class="conta-campo conta-campo-largo">
+                            <label for="f_trocaAtual">Senha atual</label>
+                            <input type="password" id="f_trocaAtual" name="senhaAtual" maxlength="72" autocomplete="current-password" required>
+                            <p class="conta-erro" id="erro-trocaAtual"></p>
+                        </div>
+                        <div class="conta-campo">
+                            <label for="f_trocaNova">Senha nova</label>
+                            <input type="password" id="f_trocaNova" name="senha" maxlength="72" autocomplete="new-password" required>
+                            <ul class="conta-regras" id="regras-senha" aria-live="polite">
+                                <li data-regra="tamanho">Pelo menos 8 caracteres</li>
+                                <li data-regra="letra">Uma letra</li>
+                                <li data-regra="numero">Um número</li>
+                            </ul>
+                            <p class="conta-erro" id="erro-trocaNova"></p>
+                        </div>
+                        <div class="conta-campo">
+                            <label for="f_trocaConfirmar">Confirmar senha nova</label>
+                            <input type="password" id="f_trocaConfirmar" name="confirmarSenha" maxlength="72" autocomplete="new-password" required>
+                            <p class="conta-erro" id="erro-trocaConfirmar"></p>
+                        </div>
+                    </div>
+
+                    <p class="conta-mensagem" id="mensagem-senha" role="status" aria-live="polite"></p>
+
+                    <button type="submit" class="conta-botao" id="salvar-senha">Trocar senha</button>
                 </form>
             </section>
 
