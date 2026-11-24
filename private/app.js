@@ -288,6 +288,10 @@ const naoEncontrado = { status: 404, corpo: { error: "O pedido não foi encontra
 
 /* ================= Middlewares ================= */
 
+// Verificação de saúde da hospedagem (o Render chama de tempos em tempos). Não consulta o banco
+// de propósito: assim o Neon pode dormir quando ninguém usa o site e o plano gratuito rende mais.
+app.get("/saude", (req, res) => res.type("text/plain").send("ok"));
+
 // Primeiro as barreiras: domínio e origem (DNS rebinding/CSRF) e cabeçalhos de segurança
 app.use(protegerOrigem);
 app.use(cabecalhosSeguranca);

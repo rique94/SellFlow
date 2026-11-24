@@ -3,7 +3,7 @@
  */
 const crypto = require("crypto");
 const { consulta } = require("./banco");
-const { NA_NUVEM, HOSTS_PERMITIDOS } = require("./config");
+const { NA_NUVEM, HOSTS_PERMITIDOS, DOMINIO_PUBLICO } = require("./config");
 
 /* ================= Domínio e origem (contra DNS rebinding e CSRF) ================= */
 
@@ -14,7 +14,7 @@ function nomeDoHost(valor) {
 }
 
 // Domínios conhecidos do próprio sistema (além do Host da requisição)
-const HOSTS_DO_SISTEMA = new Set([...HOSTS_PERMITIDOS, process.env.RAILWAY_PUBLIC_DOMAIN].filter(Boolean));
+const HOSTS_DO_SISTEMA = new Set([...HOSTS_PERMITIDOS, DOMINIO_PUBLICO].filter(Boolean));
 
 function origemDoSistema(origem, req) {
     try {

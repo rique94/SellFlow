@@ -55,11 +55,24 @@ CREATE INDEX IF NOT EXISTS sessoes_ultimo_uso ON sessoes (ultimo_uso);
 
 let motor = null;
 
+/*
+ * O endereço do Neon vem com sslmode=require. O driver pg já trata isso como verify-full
+ * (confere o certificado do servidor), mas avisa que vai mudar na próxima versão. Pedimos
+ * verify-full explicitamente: mantém a conexão segura e tira o aviso do log.
+ */
+function enderecoDoBanco(url) {
+    return url.replace(/([?&])sslmode=(prefer|require|verify-ca)(?=&|$)/, "$1sslmode=verify-full");
+}
+
 function conectarPostgres() {
     const { Pool } = require("pg");
     const pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
+        connectionString: enderecoDoBanco(process.env.DATABASE_URL),
         max: Number(process.env.PG_POOL_MAX) || 10,
+        // Fecha conexões paradas logo: bancos como o Neon dormem sem uso (e o plano gratuito rende mais)
+        idleTimeoutMillis: 10000,
+        // Banco dormindo leva um instante para acordar
+        connectionTimeoutMillis: 15000,
     });
     pool.on("error", (error) => console.error("Erro na conexão com o banco:", error.message));
 

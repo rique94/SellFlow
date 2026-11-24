@@ -40,7 +40,7 @@ Pedidos em andamento (Pagar, Retirar, Pagar local e Despachar) nunca são arquiv
 - **Node.js** + **Express 5** no servidor
 - **PostgreSQL** para guardar os dados (no computador, o [PGlite](https://pglite.dev/) roda um Postgres dentro do próprio Node, sem instalar nada)
 - **HTML, CSS e JavaScript** puros no navegador (sem frameworks)
-- Hospedagem no **[Railway](https://railway.com/)**
+- Hospedagem gratuita: site no **[Render](https://render.com/)** e banco no **[Neon](https://neon.tech/)**
 
 ## Rodar no computador (desenvolvimento)
 
@@ -67,29 +67,43 @@ npm test
 
 Os testes sobem a API com um banco só na memória e conferem cadastro, login, pedidos, arquivamento e, principalmente, que uma loja nunca vê os pedidos de outra.
 
-## Publicar no Railway
+## Publicar de graça (Render + Neon)
 
-1. Envie o código para o GitHub.
-2. No Railway, crie um projeto com **Deploy from GitHub repo** e escolha o repositório do SellFlow.
-3. No mesmo projeto, adicione um banco: **+ New → Database → PostgreSQL**.
-4. No serviço do SellFlow, aba **Variables**, crie `DATABASE_URL` com o valor `${{Postgres.DATABASE_URL}}`.
-5. Na aba **Settings → Networking**, clique em **Generate Domain** para ganhar um endereço `*.up.railway.app`.
+O site roda no plano gratuito do **Render** e o banco no plano gratuito do **Neon** (o Postgres gratuito do Render é apagado depois de 30 dias; o do Neon não vence).
 
-O Railway roda `npm install` e `npm start` sozinho. Na primeira vez, o servidor cria as tabelas no banco. Cada push no GitHub publica uma versão nova.
+**1. Banco no Neon**
+
+1. Crie uma conta em [neon.tech](https://neon.tech) (pode entrar com o GitHub).
+2. Crie um projeto chamado `sellflow`, com Postgres na região **AWS US East (N. Virginia)**, perto do Render.
+3. Clique em **Connect** e copie o endereço de conexão (começa com `postgresql://`).
+
+**2. Site no Render**
+
+1. Crie uma conta em [render.com](https://render.com) entrando com o GitHub.
+2. Clique em **New → Blueprint** e escolha o repositório do SellFlow. O Render lê o arquivo [`render.yaml`](render.yaml).
+3. Quando ele pedir, cole o endereço do Neon em `DATABASE_URL`. `RESEND_API_KEY` e `EMAIL_FROM` podem ficar vazios por enquanto.
+4. Clique em **Apply**. Em poucos minutos o site fica no ar em `https://sellflow.onrender.com` (ou um endereço parecido).
+
+Na primeira vez, o servidor cria as tabelas no banco. Cada push na `main` publica uma versão nova.
+
+**Limites do plano gratuito:**
+
+- O site "dorme" depois de 15 minutos sem visitas. A primeira visita depois disso leva cerca de 1 minuto para abrir.
+- O Neon guarda até 1 GB e dorme depois de 5 minutos parado (acorda em menos de 1 segundo). Se passar do limite de uso do mês, o banco pausa até o mês seguinte, sem perder dados.
 
 ### Variáveis de ambiente
 
 | Variável       | Obrigatória | Para que serve                                                                 |
 | -------------- | ----------- | ------------------------------------------------------------------------------ |
 | `DATABASE_URL` | Sim         | Conexão com o Postgres                                                         |
-| `PORT`         | Não         | Porta do servidor (o Railway preenche sozinho)                                 |
+| `PORT`         | Não         | Porta do servidor (a hospedagem preenche sozinha)                              |
 | `APP_HOSTS`    | Não         | Domínios aceitos, separados por vírgula (ex.: `sellflow.com.br,www.sellflow.com.br`) |
 | `TZ`           | Não         | Fuso dos horários dos pedidos (padrão `America/Sao_Paulo`)                      |
 | `RESEND_API_KEY` | Para recuperar senha | Chave do [Resend](https://resend.com), que envia os e-mails             |
 | `EMAIL_FROM`   | Para recuperar senha | Remetente dos e-mails (ex.: `SellFlow <nao-responda@sellflow.com.br>`)   |
-| `APP_URL`      | Não         | Endereço do site nos links dos e-mails (padrão: o domínio do Railway)          |
+| `APP_URL`      | Não         | Endereço do site nos links dos e-mails (padrão: o domínio da hospedagem)          |
 
-No Railway, o servidor percebe sozinho que está em produção: aceita conexões da internet, manda o cookie de sessão só por HTTPS e ativa o HSTS. Fora do Railway, defina `NODE_ENV=production`.
+No Render (e no Railway), o servidor percebe sozinho que está em produção: aceita conexões da internet, manda o cookie de sessão só por HTTPS e ativa o HSTS. Em outra hospedagem, defina `NODE_ENV=production`.
 
 ## Banco de dados
 
@@ -106,7 +120,7 @@ O esquema fica em [`private/banco.js`](private/banco.js) e é criado sozinho ao 
 
 1. Crie uma conta no [Resend](https://resend.com) (o plano gratuito envia até 3.000 e-mails por mês).
 2. Em **Domains**, adicione o domínio da loja ou do SellFlow e crie os registros DNS que ele mostrar.
-3. Em **API Keys**, crie uma chave e coloque em `RESEND_API_KEY` no Railway.
+3. Em **API Keys**, crie uma chave e coloque em `RESEND_API_KEY` no Render (**Environment** do serviço).
 4. Defina `EMAIL_FROM` com um endereço desse domínio, por exemplo `SellFlow <nao-responda@seudominio.com.br>`.
 
 Sem domínio verificado, o Resend só entrega para o e-mail da própria conta do Resend (bom para testar). Se o site usar um domínio próprio, defina também `APP_URL` (ex.: `https://sellflow.com.br`) para os links apontarem para ele.
@@ -138,6 +152,7 @@ SellFlow/
 │
 ├── test/                    (testes da API)
 ├── package.json
+├── render.yaml              (configuração do site no Render)
 └── README.md
 ```
 

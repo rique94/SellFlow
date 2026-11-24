@@ -1,0 +1,25 @@
+# Configuração do SellFlow no Render (https://render.com).
+# No painel do Render: New → Blueprint → escolha o repositório. Ele lê este arquivo e cria o site.
+# O banco fica no Neon (https://neon.tech), que tem Postgres gratuito sem prazo de validade.
+services:
+  - type: web
+    name: sellflow
+    runtime: node
+    plan: free
+    region: virginia # mais perto do Neon em us-east; troque se criar o banco em outra região
+    branch: main
+    autoDeploy: true # cada push na main publica uma versão nova
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /saude
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Endereço de conexão do Neon (o Render pede para colar ao criar o site)
+      - key: DATABASE_URL
+        sync: false
+      # Opcionais: para enviar os e-mails de recuperação de senha pelo Resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
