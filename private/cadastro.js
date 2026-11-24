@@ -97,41 +97,75 @@ function cnpjValido(digitos) {
     return digitos.endsWith(`${d1}${d2}`);
 }
 
-/* ================= CEP (ViaCEP) ================= */
+/* ================= CEP (ViaCEP, com a BrasilAPI de reserva) ================= */
 
-/**
- * Consulta o CEP no ViaCEP.
- * Retorna { existe: true, dados } | { existe: false } | { indisponivel: true } (sem internet)
- */
-async function consultarCep(cep) {
-    try {
-        const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`, {
-            signal: AbortSignal.timeout(5000),
-        });
-        if (resposta.status === 400) {
-            return { existe: false };
-        }
-        if (!resposta.ok) {
-            return { indisponivel: true };
-        }
-        const dados = await resposta.json();
-        if (dados.erro) {
-            return { existe: false };
-        }
-        return {
-            existe: true,
-            dados: {
-                cep: somenteDigitos(dados.cep),
-                logradouro: dados.logradouro || "",
-                bairro: dados.bairro || "",
-                cidade: dados.localidade || "",
-                uf: dados.uf || "",
-            },
-        };
-    } catch (error) {
-        console.warn("Não foi possível consultar o CEP (sem internet?):", error.message);
+// Retorno das consultas: { existe: true, dados } | { existe: false } | { indisponivel: true }
+
+async function consultarViaCep(cep) {
+    const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: AbortSignal.timeout(5000) });
+    if (resposta.status === 400) {
+        return { existe: false };
+    }
+    if (!resposta.ok) {
+        // O ViaCEP costuma recusar pedidos de servidores fora do Brasil (ex.: Render nos EUA)
+        console.warn(`ViaCEP respondeu ${resposta.status}; tentando a BrasilAPI.`);
         return { indisponivel: true };
     }
+    const dados = await resposta.json();
+    if (dados.erro) {
+        return { existe: false };
+    }
+    return {
+        existe: true,
+        dados: {
+            cep: somenteDigitos(dados.cep),
+            logradouro: dados.logradouro || "",
+            bairro: dados.bairro || "",
+            cidade: dados.localidade || "",
+            uf: dados.uf || "",
+        },
+    };
+}
+
+async function consultarBrasilApi(cep) {
+    const resposta = await fetch(`https://brasilapi.com.br/api/cep/v1/${cep}`, { signal: AbortSignal.timeout(5000) });
+    const dados = await resposta.json().catch(() => ({}));
+    if (resposta.status === 404) {
+        // 404 tanto para "CEP não existe" quanto para "todos os serviços falharam": só conta como
+        // inexistente quando algum serviço diz isso com todas as letras
+        const erros = Array.isArray(dados.errors) ? dados.errors : [];
+        const naoExiste = erros.some((erro) => /não encontrado|inválido/i.test(String(erro.message)));
+        return naoExiste ? { existe: false } : { indisponivel: true };
+    }
+    if (!resposta.ok || !dados.state) {
+        return { indisponivel: true };
+    }
+    return {
+        existe: true,
+        dados: {
+            cep: somenteDigitos(dados.cep),
+            logradouro: dados.street || "",
+            bairro: dados.neighborhood || "",
+            cidade: dados.city || "",
+            uf: dados.state || "",
+        },
+    };
+}
+
+/**
+ * Consulta o CEP no ViaCEP e, se ele não responder, na BrasilAPI.
+ * Só fica { indisponivel: true } quando as duas falham (o cadastro aceita o endereço digitado).
+ */
+async function consultarCep(cep) {
+    for (const consulta of [consultarViaCep, consultarBrasilApi]) {
+        try {
+            const resultado = await consulta(cep);
+            if (!resultado.indisponivel) return resultado;
+        } catch (error) {
+            console.warn(`Não foi possível consultar o CEP (${consulta.name}):`, error.message);
+        }
+    }
+    return { indisponivel: true };
 }
 
 /* ================= Validação do cadastro ================= */
