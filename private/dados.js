@@ -75,6 +75,17 @@ async function criarLoja(loja) {
     }
 }
 
+// Troca o e-mail da loja. Retorna { loja } ou { conflito: "email" } se outra loja já usa esse e-mail.
+async function atualizarEmail(lojaId, email) {
+    try {
+        const [linha] = await consulta("UPDATE lojas SET email = $2 WHERE id = $1 RETURNING *", [lojaId, email]);
+        return { loja: lojaDoBanco(linha) };
+    } catch (error) {
+        if (error.code === "23505") return { conflito: "email" };
+        throw error;
+    }
+}
+
 async function buscarLojaPorEmail(email) {
     const [linha] = await consulta("SELECT * FROM lojas WHERE lower(email) = lower($1)", [email]);
     return lojaDoBanco(linha);
@@ -261,6 +272,7 @@ module.exports = {
     buscarLojaParaLogin,
     criarLoja,
     buscarLojaPorEmail,
+    atualizarEmail,
     criarRedefinicao,
     redefinicaoValida,
     redefinirSenha,

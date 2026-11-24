@@ -1,0 +1,242 @@
+/* ---------- Minha loja ---------- */
+
+main.conta {
+    min-height: 100vh;
+    padding: 0 28px 40px;
+    background: #f7f9fc;
+    color: #0c1d4b;
+    text-align: left;
+}
+
+.conta-cabecalho {
+    padding: 26px 0 20px;
+    border-bottom: 1px solid #dce5f1;
+}
+
+.conta-cabecalho h2 {
+    color: #0a1947;
+    font-size: 30px;
+    line-height: 1.2;
+}
+
+.conta-cabecalho p {
+    margin-top: 6px;
+    color: #587098;
+    font-size: 14px;
+}
+
+.conta-aviso {
+    max-width: 820px;
+    margin-top: 18px;
+    padding: 10px 14px;
+    border: 1px solid #f1b7b0;
+    border-radius: 8px;
+    background: #fff5f4;
+    color: #8a1c12;
+    font-size: 13px;
+}
+
+.conta-aviso[hidden] {
+    display: none;
+}
+
+/* ---------- Cartões ---------- */
+
+.conta-cartao {
+    max-width: 820px;
+    margin-top: 22px;
+    padding: 22px;
+    border: 1px solid #dce5f1;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.conta-cartao h3 {
+    color: #0a1947;
+    font-size: 17px;
+}
+
+.conta-cartao-topo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.conta-dica {
+    margin-top: 4px;
+    color: #587098;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.conta-selo {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.conta-selo[hidden] {
+    display: none;
+}
+
+.conta-selo.ok {
+    background: #e6f6ec;
+    color: #17663a;
+}
+
+.conta-selo.pendente {
+    background: #fff4dc;
+    color: #8a5a00;
+}
+
+/* ---------- Formulário ---------- */
+
+.conta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.conta-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.conta-campo label {
+    color: #183666;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.conta-campo input {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid #c9d6e8;
+    border-radius: 8px;
+    background: #fff;
+    color: #0c1d4b;
+    font-size: 15px;
+}
+
+.conta-campo input:focus {
+    border-color: #2f63d8;
+    outline: 3px solid rgb(47 99 216 / 18%);
+}
+
+.conta-campo input.campo-erro {
+    border-color: #d64545;
+}
+
+.conta-dica-campo {
+    color: #6c7f9f;
+    font-size: 12px;
+}
+
+.conta-erro {
+    color: #b42318;
+    font-size: 12px;
+}
+
+.conta-erro:empty {
+    display: none;
+}
+
+#mensagem {
+    margin-top: 16px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+#mensagem:empty {
+    display: none;
+}
+
+#mensagem.sucesso {
+    border: 1px solid #a7dcb9;
+    background: #effaf3;
+    color: #17663a;
+}
+
+#mensagem.erro {
+    border: 1px solid #f1b7b0;
+    background: #fff5f4;
+    color: #8a1c12;
+}
+
+.conta-botao {
+    margin-top: 18px;
+    padding: 11px 20px;
+    border: 0;
+    border-radius: 8px;
+    background: #173b80;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.conta-botao:hover {
+    background: #1d4793;
+}
+
+.conta-botao:focus-visible {
+    outline: 2px solid #6f9cff;
+    outline-offset: 2px;
+}
+
+.conta-botao:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+/* ---------- Dados da loja ---------- */
+
+.conta-dados {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 20px;
+    margin-top: 16px;
+}
+
+.conta-dados dt {
+    color: #6c7f9f;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.conta-dados dd {
+    margin-top: 4px;
+    color: #0c1d4b;
+    font-size: 15px;
+    overflow-wrap: anywhere;
+}
+
+.conta-dados-largo {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+    main.conta {
+        width: 100%;
+        margin-left: 0;
+        padding: 0 16px 32px;
+    }
+
+    .conta-grid,
+    .conta-dados {
+        grid-template-columns: 1fr;
+    }
+
+    .conta-cartao-topo {
+        flex-direction: column;
+    }
+}

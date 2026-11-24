@@ -505,3 +505,39 @@ main {
         margin-left: 0;
     }
 }
+
+/* ---------- Aviso de e-mail não cadastrado (painel de pedidos) ---------- */
+.aviso-email {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    margin: 0 40px 10px;
+    padding: 12px 16px;
+    border: 1px solid #f3d38a;
+    border-radius: 10px;
+    background: #fff8e6;
+    color: #6b4700;
+    font-size: 14px;
+    text-align: left;
+}
+.aviso-email[hidden] {
+    display: none;
+}
+.aviso-email a {
+    padding: 7px 12px;
+    border-radius: 7px;
+    background: #173b80;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+}
+.aviso-email a:hover {
+    background: #1d4793;
+}
+@media (max-width: 760px) {
+    .aviso-email {
+        margin: 0 16px 10px;
+    }
+}

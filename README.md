@@ -15,6 +15,7 @@ O **SellFlow** organiza os pedidos de uma loja em um só lugar: cadastro de pedi
 - **Cadastro de lojas:** qualquer loja cria a sua conta. O CNPJ e o telefone são validados e o CEP é consultado no ViaCEP para preencher o endereço. Usuário, telefone e e-mail não se repetem entre lojas.
 - **Login** por usuário ou telefone, com sessão de 12 horas e bloqueio temporário depois de várias senhas erradas.
 - **Recuperação de senha por e-mail:** a loja recebe um link que vale por 1 hora e só pode ser usado uma vez.
+- **Minha loja:** mostra os dados da conta e permite cadastrar ou trocar o e-mail de recuperação (pede a senha atual e avisa o e-mail antigo). O painel de pedidos lembra a loja de cadastrar o e-mail enquanto ela não tiver um.
 - **Pedidos:** criar, editar e excluir pedidos com várias peças, tamanho, quantidade, valor e frete. Cada loja tem a própria numeração (1 a 999).
 - **Status do pedido:** 🔴 Pagar · 🟡 Retirar · 🟣 Pagar local · 🔵 Despachar · 🟦 Despachado · ✅ Finalizado.
 - **Lista de pedidos** com busca por nome ou telefone e filtros por status. Os pedidos em andamento aparecem primeiro e os concluídos no final.
@@ -128,7 +129,7 @@ SellFlow/
 │
 ├── public/                  (navegador)
 │   ├── images/
-│   ├── pages/               (cadastro, dashboard, detalhes-pedido, metricas, novo-pedido,
+│   ├── pages/               (cadastro, conta, dashboard, detalhes-pedido, metricas, novo-pedido,
 │   │                         recuperar-senha, redefinir-senha)
 │   ├── scripts/
 │   ├── styles/

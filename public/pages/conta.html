@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-br">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <title>Minha loja</title>
+        <link rel="stylesheet" href="/styles/style.css" />
+        <link rel="stylesheet" href="/styles/conta.css" />
+    </head>
+    <body>
+        <header>
+            <div class="sidebar">
+                <div>
+                    <h1>SellFlow</h1>
+                    <p id="nome_loja"></p>
+                </div>
+                <nav>
+                    <a href="/dashboard">📄 Pedidos</a>
+                    <a href="/novo-pedido">➕ Novo pedido</a>
+                    <a href="/metricas">📊 Métricas</a>
+                    <a id="selecionado" aria-current="page">⚙️ Minha loja</a>
+                </nav>
+                <button type="button" class="sidebar-sair" data-sair>↩ Sair</button>
+            </div>
+        </header>
+        <main class="conta">
+            <header class="conta-cabecalho">
+                <h2>Minha loja</h2>
+                <p>Dados da conta e e-mail para recuperar a senha</p>
+            </header>
+
+            <p class="conta-aviso" id="aviso-carregar" role="alert" hidden></p>
+
+            <!-- E-mail de recuperação -->
+            <section class="conta-cartao" aria-labelledby="titulo-email">
+                <div class="conta-cartao-topo">
+                    <div>
+                        <h3 id="titulo-email">E-mail de recuperação</h3>
+                        <p class="conta-dica">Se você esquecer a senha, o link para criar uma nova chega neste e-mail.</p>
+                    </div>
+                    <span class="conta-selo" id="selo-email" hidden></span>
+                </div>
+
+                <form id="form-email" novalidate>
+                    <div class="conta-grid">
+                        <div class="conta-campo">
+                            <label for="f_email">E-mail</label>
+                            <input type="email" id="f_email" name="email" maxlength="254" placeholder="contato@sualoja.com.br" autocomplete="email" autocapitalize="none" spellcheck="false" required>
+                            <p class="conta-erro" id="erro-email"></p>
+                        </div>
+                        <div class="conta-campo">
+                            <label for="f_senha">Senha atual</label>
+                            <input type="password" id="f_senha" name="senha" maxlength="72" autocomplete="current-password" required>
+                            <p class="conta-dica-campo">Pedimos a senha para confirmar que é você.</p>
+                            <p class="conta-erro" id="erro-senha"></p>
+                        </div>
+                    </div>
+
+                    <p id="mensagem" role="status" aria-live="polite"></p>
+
+                    <button type="submit" class="conta-botao" id="salvar-email">Salvar e-mail</button>
+                </form>
+            </section>
+
+            <!-- Dados da loja (só leitura) -->
+            <section class="conta-cartao" aria-labelledby="titulo-dados">
+                <h3 id="titulo-dados">Dados da loja</h3>
+                <dl class="conta-dados">
+                    <div><dt>Nome</dt><dd id="dado-nome">—</dd></div>
+                    <div><dt>Usuário</dt><dd id="dado-login">—</dd></div>
+                    <div><dt>Telefone</dt><dd id="dado-telefone">—</dd></div>
+                    <div><dt>CNPJ</dt><dd id="dado-cnpj">—</dd></div>
+                    <div class="conta-dados-largo"><dt>Endereço</dt><dd id="dado-endereco">—</dd></div>
+                </dl>
+            </section>
+        </main>
+        <script src="/scripts/sessao.js"></script>
+        <script src="/scripts/conta.js"></script>
+    </body>
+</html>

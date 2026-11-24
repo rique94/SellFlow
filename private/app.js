@@ -37,6 +37,7 @@ const {
     buscarLojaParaLogin,
     criarLoja,
     buscarLojaPorEmail,
+    atualizarEmail,
     criarRedefinicao,
     redefinicaoValida,
     redefinirSenha,
@@ -330,6 +331,7 @@ app.get("/dashboard", paginaProtegida("dashboard.html"));
 app.get("/novo-pedido", paginaProtegida("novo-pedido.html"));
 app.get("/detalhes-pedido/:id", paginaProtegida("detalhes-pedido.html"));
 app.get("/metricas", paginaProtegida("metricas.html"));
+app.get("/conta", paginaProtegida("conta.html"));
 
 // Páginas abertas (sem login)
 app.get("/cadastro", (req, res) => res.sendFile(path.join(PASTA_PAGINAS, "cadastro.html")));
@@ -511,6 +513,64 @@ app.get("/api/loja", async (req, res) => {
         return res.status(401).json({ error: "Faça login para continuar." });
     }
     res.json(lojaPublica(loja));
+});
+
+/*
+ * Cadastrar ou trocar o e-mail da loja logada. Pede a senha atual: com uma sessão esquecida
+ * aberta, ninguém consegue trocar o e-mail e depois usar "Esqueci a senha" para tomar a conta.
+ * Senha errada conta para o mesmo bloqueio do login.
+ */
+app.put("/api/loja/email", async (req, res) => {
+    const loja = await buscarLojaPorId(req.lojaId);
+    if (!loja) {
+        return res.status(401).json({ error: "Faça login para continuar." });
+    }
+
+    const espera = segundosBloqueado(req.ip, loja.login);
+    if (espera) {
+        return respostaBloqueio(res, espera, `Muitas tentativas erradas. Tente de novo em ${textoEspera(espera)}.`);
+    }
+
+    const email = normalizarEmail(req.body?.email);
+    if (!emailValido(email)) {
+        return res.status(400).json({ error: "Informe um e-mail válido.", campo: "email" });
+    }
+    const senha = typeof req.body?.senha === "string" ? req.body.senha : "";
+    if (!(await verificarSenha(senha, loja.pwd))) {
+        registrarErroLogin(req.ip, loja.login);
+        const bloqueio = segundosBloqueado(req.ip, loja.login);
+        if (bloqueio) {
+            return respostaBloqueio(res, bloqueio, `Senha incorreta. Por segurança, aguarde ${textoEspera(bloqueio)} para tentar de novo.`);
+        }
+        return res.status(400).json({ error: "Senha incorreta.", campo: "senha" });
+    }
+
+    if (email === loja.email) {
+        return res.json({ loja: lojaPublica(loja) });
+    }
+    const resultado = await atualizarEmail(loja.id, email);
+    if (resultado.conflito) {
+        return res.status(409).json({ error: "Já existe uma loja cadastrada com este e-mail.", campo: "email" });
+    }
+    console.log(`E-mail da loja ${loja.id} atualizado.`);
+    res.json({ loja: lojaPublica(resultado.loja) });
+
+    // Avisa o e-mail antigo: se não foi a loja que trocou, ela fica sabendo
+    if (loja.email) {
+        enviarEmail({
+            para: loja.email,
+            assunto: `O e-mail da loja ${loja.usrName} foi alterado · SellFlow`,
+            texto:
+                `Olá!\n\nO e-mail de recuperação de senha da loja "${loja.usrName}" (usuário ${loja.login}) no SellFlow ` +
+                `foi trocado para ${email}. A partir de agora, os links de redefinição de senha vão para o endereço novo.\n\n` +
+                `Se não foi você, entre no SellFlow, troque o e-mail de volta e fale com o suporte.`,
+            html:
+                `<p>Olá!</p><p>O e-mail de recuperação de senha da loja <strong>${escaparHtml(loja.usrName)}</strong> ` +
+                `(usuário ${escaparHtml(loja.login)}) no SellFlow foi trocado para <strong>${escaparHtml(email)}</strong>. ` +
+                `A partir de agora, os links de redefinição de senha vão para o endereço novo.</p>` +
+                `<p>Se não foi você, entre no SellFlow, troque o e-mail de volta e fale com o suporte.</p>`,
+        }).catch((error) => console.error("Não foi possível avisar o e-mail antigo:", error.message));
+    }
 });
 
 // Lista de pedidos (os prazos de arquivamento são aplicados antes)

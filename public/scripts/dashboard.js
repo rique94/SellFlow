@@ -101,6 +101,8 @@ async function pegarArquivados() {
 
 function mostrarContadores() {
     document.getElementById("nome_loja").textContent = loja.usrName;
+    // Loja sem e-mail não consegue recuperar a senha: lembra de cadastrar
+    document.getElementById("aviso-email").hidden = Boolean(loja.email);
     document.getElementById("num-total-pedidos").textContent = pedidos.length;
     document.getElementById("num-pedidos-retirar").textContent = contar("🟡Retirar", "🟣Pagar local");
     document.getElementById("num-pedidos-pagar").textContent = contar("🔴Pagar", "🟣Pagar local");

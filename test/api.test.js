@@ -255,3 +255,47 @@ test("as páginas de recuperação abrem sem login", async () => {
     assert.equal((await visitante("GET", "/recuperar-senha")).status, 200);
     assert.equal((await visitante("GET", "/redefinir-senha")).status, 200);
 });
+
+test("loja logada cadastra e troca o e-mail (com a senha atual)", async () => {
+    const lojaF = navegador();
+    let r = await visitante("POST", "/api/cadastro", cadastro({ login: "lojaF", email: "f@exemplo.com", telefone: "(61) 98765-4321" }));
+    assert.equal(r.status, 201);
+    // Simula uma loja antiga, cadastrada antes de o e-mail existir
+    await consulta("UPDATE lojas SET email = NULL WHERE login = 'lojaF'");
+
+    assert.equal((await visitante("GET", "/conta")).status, 302, "a página exige login");
+    assert.equal((await visitante("PUT", "/api/loja/email", { email: "x@exemplo.com", senha: "senha1234" })).status, 401);
+
+    assert.equal((await lojaF("POST", "/api/login", { usr: "lojaF", pwd: "senha1234" })).status, 200);
+    assert.equal((await lojaF("GET", "/conta")).status, 200);
+    assert.equal((await lojaF("GET", "/api/loja")).json.email, "");
+
+    r = await lojaF("PUT", "/api/loja/email", { email: "novo@exemplo.com", senha: "errada123" });
+    assert.equal(r.status, 400);
+    assert.equal(r.json.campo, "senha");
+
+    r = await lojaF("PUT", "/api/loja/email", { email: "invalido", senha: "senha1234" });
+    assert.equal(r.json.campo, "email");
+
+    r = await lojaF("PUT", "/api/loja/email", { email: "lojab@exemplo.com", senha: "senha1234" });
+    assert.equal(r.status, 409, "e-mail de outra loja");
+
+    const antes = emails.length;
+    r = await lojaF("PUT", "/api/loja/email", { email: "Novo@Exemplo.com", senha: "senha1234" });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.loja.email, "novo@exemplo.com");
+    assert.equal(r.json.loja.pwd, undefined);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.equal(emails.length, antes, "sem e-mail antigo, ninguém é avisado");
+
+    // Trocar de novo avisa o endereço antigo
+    r = await lojaF("PUT", "/api/loja/email", { email: "outro@exemplo.com", senha: "senha1234" });
+    assert.equal(r.status, 200);
+    const aviso = await esperarEmail(antes + 1);
+    assert.equal(aviso.para, "novo@exemplo.com");
+    assert.match(aviso.texto, /outro@exemplo\.com/);
+
+    // O e-mail novo já serve para recuperar a senha
+    await visitante("POST", "/api/senha/esqueci", { email: "outro@exemplo.com" });
+    assert.equal((await esperarEmail(antes + 2)).para, "outro@exemplo.com");
+});
