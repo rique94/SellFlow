@@ -569,7 +569,7 @@ async function carregarDados() {
     } catch (error) {
         mostrarAviso(
             error instanceof TypeError
-                ? "Não foi possível conectar ao sistema. Verifique se o SellFlow está aberto."
+                ? "Não foi possível conectar ao sistema. Verifique sua internet."
                 : error.message,
         );
     }

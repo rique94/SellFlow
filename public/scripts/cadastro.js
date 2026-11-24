@@ -180,7 +180,6 @@ function setCarregando(carregando) {
 function mostrarTela(id) {
     document.getElementById("cadastro-conteudo").hidden = true;
     document.getElementById("cadastro-sucesso").hidden = id !== "cadastro-sucesso";
-    document.getElementById("cadastro-bloqueado").hidden = id !== "cadastro-bloqueado";
 }
 
 form.addEventListener("submit", async (event) => {
@@ -212,10 +211,7 @@ form.addEventListener("submit", async (event) => {
             document.getElementById("sucesso-titulo").focus();
             return;
         }
-        if (resposta.status === 409) {
-            mostrarTela("cadastro-bloqueado");
-            return;
-        }
+        // 409 = usuário ou telefone já usados por outra loja (o servidor diz qual campo)
         if (resultado.campo && campo(resultado.campo)) {
             erroCampo(resultado.campo, resultado.error);
             campo(resultado.campo).focus();
@@ -223,20 +219,7 @@ form.addEventListener("submit", async (event) => {
             mostrarMensagem(resultado.error || "Não foi possível cadastrar a loja. Tente novamente.");
         }
     } catch {
-        mostrarMensagem("Não foi possível conectar ao sistema. Verifique se o SellFlow está aberto.");
+        mostrarMensagem("Não foi possível conectar ao sistema. Verifique sua internet.");
     }
     setCarregando(false);
 });
-
-/* ================= Início ================= */
-
-// Se já existe loja, nem mostra o formulário
-(async () => {
-    try {
-        const resposta = await fetch("/api/cadastro/status");
-        const { cadastrada } = await resposta.json();
-        if (cadastrada) mostrarTela("cadastro-bloqueado");
-    } catch {
-        // Sem conexão: o envio mostrará a mensagem de erro
-    }
-})();

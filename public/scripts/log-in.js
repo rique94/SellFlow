@@ -60,13 +60,11 @@ form.addEventListener("submit", async (event) => {
             const resultado = await response.json().catch(() => ({}));
             mostrarMensagem(resultado.error || "Muitas tentativas. Aguarde um pouco e tente de novo.");
             passwd.value = "";
-        } else if (response.status === 503) {
-            mostrarMensagem("Nenhuma loja cadastrada nesta instalação.");
         } else {
             mostrarMensagem("Não foi possível entrar. Tente novamente.");
         }
     } catch {
-        mostrarMensagem("Não foi possível conectar ao sistema. Verifique se o SellFlow está aberto.");
+        mostrarMensagem("Não foi possível conectar ao sistema. Verifique sua internet.");
     }
     setCarregando(false);
 });
@@ -84,12 +82,12 @@ togglePassword.addEventListener("click", () => {
     passwd.focus();
 });
 
-// Ainda não há recuperação automática: o sistema roda só neste computador
+// Ainda não há recuperação automática de senha (seria preciso enviar e-mail ou SMS)
 document.getElementById("forgot-password").addEventListener("click", (event) => {
     event.preventDefault();
     limparMensagem();
     mostrarMensagem(
-        "Como o sistema roda só neste computador, peça ao responsável pela loja para redefinir a senha.",
+        "A recuperação de senha ainda não é automática. Fale com o suporte do SellFlow para redefinir a sua.",
         "info",
     );
 });

@@ -4,17 +4,17 @@
 
 O **SellFlow** organiza os pedidos de uma loja em um só lugar: cadastro de pedidos, acompanhamento por status, impressão de etiquetas de despacho, registro de trocas de peça e métricas de vendas.
 
-Cada instalação atende **uma loja** e roda **no próprio computador da loja**. No primeiro acesso, a loja é cadastrada pelo próprio sistema.
+É um site na nuvem: **cada loja cria a sua conta** e vê apenas os próprios pedidos.
 
 ## Status
 
-**Versão 1.0 em finalização.**
+**Versão 2.0 em desenvolvimento:** migração de instalação local para site na nuvem com várias lojas.
 
 ## Funcionalidades
 
-- **Cadastro da loja** no primeiro acesso: o CNPJ e o telefone são validados e o CEP é consultado no ViaCEP para preencher o endereço.
+- **Cadastro de lojas:** qualquer loja cria a sua conta. O CNPJ e o telefone são validados e o CEP é consultado no ViaCEP para preencher o endereço. Usuário e telefone não se repetem entre lojas.
 - **Login** por usuário ou telefone, com sessão de 12 horas e bloqueio temporário depois de várias senhas erradas.
-- **Pedidos:** criar, editar e excluir pedidos com várias peças, tamanho, quantidade, valor e frete.
+- **Pedidos:** criar, editar e excluir pedidos com várias peças, tamanho, quantidade, valor e frete. Cada loja tem a própria numeração (1 a 999).
 - **Status do pedido:** 🔴 Pagar · 🟡 Retirar · 🟣 Pagar local · 🔵 Despachar · 🟦 Despachado · ✅ Finalizado.
 - **Lista de pedidos** com busca por nome ou telefone e filtros por status. Os pedidos em andamento aparecem primeiro e os concluídos no final.
 - **Impressão:** etiqueta de despacho (destinatário e remetente) ou ficha completa do pedido.
@@ -36,15 +36,13 @@ Pedidos em andamento (Pagar, Retirar, Pagar local e Despachar) nunca são arquiv
 ## Tecnologias
 
 - **Node.js** + **Express 5** no servidor
+- **PostgreSQL** para guardar os dados (no computador, o [PGlite](https://pglite.dev/) roda um Postgres dentro do próprio Node, sem instalar nada)
 - **HTML, CSS e JavaScript** puros no navegador (sem frameworks)
-- **Arquivos JSON** para guardar os dados
+- Hospedagem no **[Railway](https://railway.com/)**
 
-## Requisitos
+## Rodar no computador (desenvolvimento)
 
-- [Node.js](https://nodejs.org/) **18 ou mais recente**
-- Conexão com a internet só para consultar o CEP no cadastro (sem internet, o endereço pode ser preenchido à mão)
-
-## Instalação
+Requisito: [Node.js](https://nodejs.org/) **20 ou mais recente**.
 
 ```bash
 git clone https://github.com/rique94/SellFlow.git
@@ -53,36 +51,65 @@ npm install
 npm start
 ```
 
-Depois, abra **http://localhost:3000** no navegador e cadastre a loja.
+Depois, abra **http://localhost:3000** no navegador e cadastre uma loja.
 
-Para usar outra porta, defina a variável `PORT` antes de iniciar o servidor (por exemplo, `PORT=4000`).
+Sem a variável `DATABASE_URL`, os dados ficam num banco local em `private/data/banco/` (fora do Git). Para começar do zero, desligue o servidor e apague essa pasta.
 
-> O servidor só aceita conexões do próprio computador (`localhost`). Ele não fica acessível pela rede nem pela internet.
+Para usar outra porta, defina `PORT` (por exemplo, `PORT=4000`). No computador, o servidor só aceita conexões da própria máquina.
 
-## Dados
+### Testes
 
-Os dados ficam em `private/data/`. Esses arquivos são criados pelo sistema e **não vão para o Git**:
+```bash
+npm test
+```
 
-| Arquivo            | Conteúdo                                                |
-| ------------------ | ------------------------------------------------------- |
-| `loja.json`        | Dados da loja e senha (guardada como hash scrypt)        |
-| `pedidos.json`     | Pedidos da lista                                        |
-| `finalizados.json` | Pedidos arquivados (concluídos há mais de 30 dias)      |
+Os testes sobem a API com um banco só na memória e conferem cadastro, login, pedidos, arquivamento e, principalmente, que uma loja nunca vê os pedidos de outra.
 
-**Backup:** para não perder os pedidos, copie a pasta `private/data/` de tempos em tempos.
+## Publicar no Railway
 
-**Esqueceu a senha?** Ainda não existe recuperação pela tela. Com o servidor desligado, apague `private/data/loja.json` e cadastre a loja de novo. Os pedidos não são apagados.
+1. Envie o código para o GitHub.
+2. No Railway, crie um projeto com **Deploy from GitHub repo** e escolha o repositório do SellFlow.
+3. No mesmo projeto, adicione um banco: **+ New → Database → PostgreSQL**.
+4. No serviço do SellFlow, aba **Variables**, crie `DATABASE_URL` com o valor `${{Postgres.DATABASE_URL}}`.
+5. Na aba **Settings → Networking**, clique em **Generate Domain** para ganhar um endereço `*.up.railway.app`.
+
+O Railway roda `npm install` e `npm start` sozinho. Na primeira vez, o servidor cria as tabelas no banco. Cada push no GitHub publica uma versão nova.
+
+### Variáveis de ambiente
+
+| Variável       | Obrigatória | Para que serve                                                                 |
+| -------------- | ----------- | ------------------------------------------------------------------------------ |
+| `DATABASE_URL` | Sim         | Conexão com o Postgres                                                         |
+| `PORT`         | Não         | Porta do servidor (o Railway preenche sozinho)                                 |
+| `APP_HOSTS`    | Não         | Domínios aceitos, separados por vírgula (ex.: `sellflow.com.br,www.sellflow.com.br`) |
+| `TZ`           | Não         | Fuso dos horários dos pedidos (padrão `America/Sao_Paulo`)                      |
+
+No Railway, o servidor percebe sozinho que está em produção: aceita conexões da internet, manda o cookie de sessão só por HTTPS e ativa o HSTS. Fora do Railway, defina `NODE_ENV=production`.
+
+## Banco de dados
+
+| Tabela    | Conteúdo                                                                 |
+| --------- | ------------------------------------------------------------------------ |
+| `lojas`   | Dados de cada loja e senha (guardada como hash scrypt)                    |
+| `pedidos` | Pedidos de todas as lojas, separados por `loja_id`. Os finalizados têm `arquivado_em` preenchido |
+| `sessoes` | Sessões de login (só o hash do token, nunca o token)                     |
+
+O esquema fica em [`private/banco.js`](private/banco.js) e é criado sozinho ao iniciar.
+
+**Esqueceu a senha?** Ainda não existe recuperação automática (seria preciso enviar e-mail ou SMS). Por enquanto, a senha precisa ser redefinida direto no banco.
 
 ## Estrutura
 
 ```text
 SellFlow/
 ├── private/                 (servidor)
-│   ├── data/                (dados da loja, fora do Git)
 │   ├── app.js               (rotas, páginas e API)
+│   ├── banco.js             (conexão com o Postgres ou o PGlite e esquema das tabelas)
 │   ├── cadastro.js          (validação do cadastro, CEP e hash de senha)
 │   ├── ciclo.js             (regras do arquivo de finalizados)
-│   └── seguranca.js         (sessão, limite de tentativas e cabeçalhos de segurança)
+│   ├── config.js            (variáveis de ambiente)
+│   ├── dados.js             (lojas e pedidos no banco)
+│   └── seguranca.js         (sessão, limites de tentativas e cabeçalhos de segurança)
 │
 ├── public/                  (navegador)
 │   ├── images/
@@ -92,17 +119,21 @@ SellFlow/
 │   ├── favicon.svg
 │   └── index.html           (tela de login)
 │
+├── test/                    (testes da API)
 ├── package.json
 └── README.md
 ```
 
 ## Segurança
 
-- A senha é guardada como hash (scrypt) e nunca é enviada ao navegador.
-- A sessão usa um cookie `HttpOnly` e `SameSite=Strict`.
-- O login é bloqueado temporariamente depois de várias senhas erradas.
-- O servidor aceita apenas acessos locais e envia cabeçalhos de segurança (CSP, proteção contra iframes etc.).
-- Dados reais da loja e dos clientes ficam fora do repositório (`.gitignore`).
+- **Lojas isoladas:** a loja vem sempre da sessão, nunca de um parâmetro da URL. Toda consulta de pedido filtra pela loja logada.
+- **Senhas:** guardadas como hash (scrypt), nunca enviadas ao navegador.
+- **Sessão:** cookie `HttpOnly`, `SameSite=Strict` e `Secure` (só HTTPS). No banco fica só o hash do token.
+- **Login:** bloqueio temporário depois de várias senhas erradas, contado por usuário e por IP.
+- **Limites:** número máximo de cadastros e de consultas de CEP por IP.
+- **Origem:** pedidos que alteram dados só são aceitos quando vêm das páginas do próprio site.
+- **Cabeçalhos:** CSP, HSTS, proteção contra iframes e outros.
+- **Concorrência:** cada ação trava os dados da loja até terminar, então dois pedidos criados ao mesmo tempo nunca recebem o mesmo número.
 
 ## Licença
 

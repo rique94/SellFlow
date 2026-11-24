@@ -4,7 +4,7 @@
   "description": "Sistema de gerenciamento de pedidos e vendas para lojas.",
   "main": "./private/app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test",
     "start": "node .",
     "build": "echo SellFlow build successful!"
   },
@@ -18,9 +18,13 @@
   "license": "MIT",
   "type": "commonjs",
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "pg": "^8.23.1"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.6.0"
   }
 }

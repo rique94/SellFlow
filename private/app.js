@@ -1,46 +1,46 @@
-const fs = require("fs");
+// Primeiro a configuração: ela fixa o fuso horário antes de qualquer data ser criada
+const { NA_NUVEM, PORT, PROXIES_CONFIAVEIS } = require("./config");
+const crypto = require("crypto");
 const http = require("http");
 const path = require("path");
 const express = require("express");
+const { validarCadastro, consultarCep, verificarSenha, hashSenha, somenteDigitos } = require("./cadastro");
 const {
-    validarCadastro,
-    consultarCep,
-    verificarSenha,
-    hashSenha,
-    isHash,
-    somenteDigitos,
-} = require("./cadastro");
-const {
-    exigirHostLocal,
+    protegerOrigem,
     cabecalhosSeguranca,
     criarSessao,
-    sessaoValida,
+    lojaDaSessao,
     encerrarSessao,
+    limparSessoesVencidas,
     segundosBloqueado,
     registrarErroLogin,
     registrarAcertoLogin,
     reservarLogin,
     liberarLogin,
+    limitarPorIp,
 } = require("./seguranca");
-const { infoCiclo, verificarPrazos } = require("./ciclo");
+const { infoCiclo } = require("./ciclo");
+const { iniciarBanco, fecharBanco } = require("./banco");
+const {
+    lojaPublica,
+    buscarLojaPorId,
+    buscarLojaParaLogin,
+    criarLoja,
+    naLoja,
+    manutencaoGeral,
+    ErroLojaInexistente,
+} = require("./dados");
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;
 
 // Não anuncia a tecnologia do servidor
 app.disable("x-powered-by");
+// Na nuvem, o IP real do visitante vem do proxy do Railway (usado nos limites de tentativas)
+app.set("trust proxy", PROXIES_CONFIAVEIS || false);
 
 // Hash usado quando o usuário não existe, para o login levar o mesmo tempo nos dois casos
 let hashFicticio = null;
-hashSenha(require("crypto").randomBytes(16).toString("hex")).then((hash) => (hashFicticio = hash));
 
-/* ================= Arquivos de dados ================= */
-
-const PASTA_DADOS = path.join(__dirname, "data");
-const CAMINHO_LOJA = path.join(PASTA_DADOS, "loja.json");
-const CAMINHO_PEDIDOS = path.join(PASTA_DADOS, "pedidos.json");
-// Pedidos concluídos há mais de 30 dias sem troca nem mudança (ver ciclo.js)
-const CAMINHO_FINALIZADOS = path.join(PASTA_DADOS, "finalizados.json");
 const PASTA_PAGINAS = path.join(__dirname, "../public/pages");
 
 const STATUSES_PERMITIDOS = [
@@ -51,96 +51,6 @@ const STATUSES_PERMITIDOS = [
     "🔵Despachar",
     "🟦Despachado",
 ];
-
-// Lê o arquivo a cada chamada para sempre refletir a versão atual do disco.
-// Retorna null se o arquivo não existir, estiver vazio, com JSON inválido
-// ou sem os dados mínimos (login e senha) — nesses casos não há loja.
-function lerLoja() {
-    let loja;
-    try {
-        loja = JSON.parse(fs.readFileSync(CAMINHO_LOJA, "utf8"));
-    } catch {
-        return null;
-    }
-    const valida =
-        loja !== null &&
-        typeof loja === "object" &&
-        !Array.isArray(loja) &&
-        typeof loja.login === "string" &&
-        loja.login.trim() !== "" &&
-        typeof loja.pwd === "string" &&
-        loja.pwd !== "";
-    return valida ? loja : null;
-}
-
-function lojaCadastrada() {
-    return lerLoja() !== null;
-}
-
-// Dados da loja que podem ir para o navegador (nunca a senha)
-function lojaPublica(loja) {
-    const { pwd, ...dados } = loja;
-    return dados;
-}
-
-function salvarLoja(loja) {
-    const temporario = `${CAMINHO_LOJA}.${process.pid}.${Date.now()}.tmp`;
-    fs.writeFileSync(temporario, JSON.stringify(loja, null, 4), "utf8");
-    fs.renameSync(temporario, CAMINHO_LOJA);
-}
-
-// Erro de arquivo de pedidos estragado (vira uma resposta clara, sem sobrescrever o arquivo)
-class ErroArquivoPedidos extends Error {}
-
-function mensagemArquivoPedidos(error) {
-    console.error(error.message);
-    return `${error.message} Corrija ou restaure o arquivo em private/data antes de continuar.`;
-}
-
-function lerLista(caminho) {
-    if (!fs.existsSync(caminho)) {
-        return [];
-    }
-    const conteudo = fs.readFileSync(caminho, "utf8");
-    // Arquivo vazio = nenhum pedido ainda
-    if (!conteudo.trim()) {
-        return [];
-    }
-    const nome = path.basename(caminho);
-    let pedidos;
-    try {
-        pedidos = JSON.parse(conteudo);
-    } catch {
-        throw new ErroArquivoPedidos(`O arquivo ${nome} está com um JSON inválido.`);
-    }
-    if (!Array.isArray(pedidos)) {
-        throw new ErroArquivoPedidos(`O arquivo ${nome} não contém uma lista de pedidos.`);
-    }
-    return pedidos;
-}
-
-const lerPedidos = () => lerLista(CAMINHO_PEDIDOS);
-const lerArquivados = () => lerLista(CAMINHO_FINALIZADOS);
-const salvarPedidos = (pedidos) => salvarLista(CAMINHO_PEDIDOS, pedidos);
-const salvarArquivados = (pedidos) => salvarLista(CAMINHO_FINALIZADOS, pedidos);
-
-// Escrita atômica: grava num temporário e renomeia, para não corromper o arquivo
-function salvarLista(caminho, pedidos) {
-    const temporario = `${caminho}.${process.pid}.${Date.now()}.tmp`;
-    try {
-        fs.writeFileSync(temporario, JSON.stringify(pedidos, null, 2), "utf8");
-        fs.renameSync(temporario, caminho);
-    } catch (error) {
-        if (fs.existsSync(temporario)) {
-            try {
-                fs.unlinkSync(temporario);
-            } catch (cleanupError) {
-                console.error("Falha ao remover arquivo temporário:", cleanupError);
-            }
-        }
-        throw error;
-    }
-}
 
 /* ================= Validação de pedidos ================= */
 
@@ -334,82 +244,40 @@ function lerIdPedido(req, res) {
     return id;
 }
 
-/* ================= Arquivo de finalizados (regras em ciclo.js) ================= */
-
-// Arquiva os concluídos parados há 30 dias e apaga os que estão no arquivo há 30 dias
-function manutencaoPedidos(agora = new Date()) {
-    const resultado = verificarPrazos(lerPedidos(), lerArquivados(), agora);
-    if (!resultado.mudou) {
-        return resultado;
-    }
-    // Primeiro grava o arquivo, depois tira da lista: se algo falhar no meio, o pedido
-    // fica nos dois lugares (e vale a cópia da lista), nunca em nenhum
-    salvarArquivados(resultado.arquivados);
-    salvarPedidos(resultado.pedidos);
-    if (resultado.arquivadosAgora) {
-        console.log(`${resultado.arquivadosAgora} pedido(s) concluído(s) sem troca há 30 dias foram para finalizados.json.`);
-    }
-    if (resultado.apagados) {
-        console.log(`${resultado.apagados} pedido(s) arquivado(s) há 30 dias foram apagados.`);
-    }
-    return resultado;
-}
+/* ================= Pedidos da loja logada (regras do arquivo em ciclo.js) ================= */
 
 const comCiclo = (pedido, arquivado) => ({ ...pedido, ciclo: infoCiclo(pedido, arquivado) });
+const estaArquivado = (pedido) => Boolean(pedido.arquivadoEm);
 
-// Procura o pedido na lista e, se não achar, no arquivo de finalizados
-function localizarPedido(id) {
-    const pedidos = lerPedidos();
-    const indice = pedidos.findIndex((item) => Number(item.id) === id);
-    if (indice >= 0) {
-        return { pedidos, indice, arquivado: false };
+/**
+ * Roda `funcao` com os pedidos da loja logada (ver naLoja em dados.js) e responde com o que ela
+ * retornar: { status, corpo }. A resposta só sai depois que tudo foi gravado no banco.
+ */
+async function comPedidos(req, res, mensagemErro, funcao) {
+    try {
+        const { status, corpo } = await naLoja(req.lojaId, funcao);
+        return res.status(status).json(corpo);
+    } catch (error) {
+        if (error instanceof ErroLojaInexistente) {
+            return res.status(401).json({ error: "Faça login para continuar." });
+        }
+        console.error(`${mensagemErro}:`, error);
+        return res.status(500).json({ error: `${mensagemErro}. Tente novamente.` });
     }
-    const arquivados = lerArquivados();
-    const indiceArquivo = arquivados.findIndex((item) => Number(item.id) === id);
-    if (indiceArquivo >= 0) {
-        return { pedidos, arquivados, indice: indiceArquivo, arquivado: true };
-    }
-    return null;
 }
 
-// Grava um pedido alterado. Se estava arquivado, volta para a lista (o prazo de 30 dias recomeça).
-function gravarPedidoAlterado(local, pedido) {
-    if (!local.arquivado) {
-        local.pedidos[local.indice] = pedido;
-        salvarPedidos(local.pedidos);
-        return pedido;
-    }
-    const { arquivadoEm, ...restaurado } = pedido;
-    // Volta na posição do id, para a ordem de criação da lista continuar certa
-    const posicao = local.pedidos.findIndex((item) => Number(item.id) > Number(restaurado.id));
-    local.pedidos.splice(posicao < 0 ? local.pedidos.length : posicao, 0, restaurado);
-    // Mesma ordem segura da manutenção: primeiro grava na lista, depois tira do arquivo
-    salvarPedidos(local.pedidos);
-    local.arquivados.splice(local.indice, 1);
-    salvarArquivados(local.arquivados);
-    return restaurado;
-}
-
-function respostaErroPedidos(res, error, mensagem) {
-    if (error instanceof ErroArquivoPedidos) {
-        return res.status(500).json({ error: mensagemArquivoPedidos(error) });
-    }
-    console.error(`${mensagem}:`, error);
-    return res.status(500).json({ error: `${mensagem}. Tente novamente.` });
-}
+const naoEncontrado = { status: 404, corpo: { error: "O pedido não foi encontrado." } };
 
 /* ================= Middlewares ================= */
 
-// Primeiro as barreiras: Host local (DNS rebinding/CSRF) e cabeçalhos de segurança
-app.use(exigirHostLocal);
+// Primeiro as barreiras: domínio e origem (DNS rebinding/CSRF) e cabeçalhos de segurança
+app.use(protegerOrigem);
 app.use(cabecalhosSeguranca);
 app.use(express.json());
 
-const estaLogado = (req) => sessaoValida(req, lerLoja());
-
 // Tela de entrada: quem já está logado vai direto para os pedidos
-app.get(["/", "/index.html"], (req, res) => {
-    if (estaLogado(req)) {
+app.get(["/", "/index.html"], async (req, res) => {
+    if (await lojaDaSessao(req)) {
         return res.redirect(302, "/dashboard");
     }
     res.sendFile(path.join(__dirname, "../public/index.html"));
@@ -419,26 +287,13 @@ app.get(["/", "/index.html"], (req, res) => {
 app.use("/pages", (req, res) => res.status(404).type("text/plain").send("Não encontrado."));
 app.use(express.static(path.join(__dirname, "../public"), { index: false }));
 
-// Rotas que funcionam mesmo sem loja cadastrada (necessárias para o cadastro)
-const ROTAS_SEM_LOJA = ["/cadastro", "/cadastro/status", "/cep"];
 // Rotas da API liberadas sem login
-const ROTAS_PUBLICAS = ["/login", "/logout", "/cadastro", "/cadastro/status"];
+const ROTAS_PUBLICAS = ["/login", "/logout", "/cadastro", "/cep"];
 const casaRota = (lista, caminho) => lista.some((rota) => caminho === rota || caminho.startsWith(`${rota}/`));
 
-// Enquanto a loja não for cadastrada, o resto da API não funciona
-app.use("/api", (req, res, next) => {
-    if (!casaRota(ROTAS_SEM_LOJA, req.path) && !lojaCadastrada()) {
-        return res.status(503).json({
-            error: "Nenhuma loja cadastrada nesta instalação.",
-        });
-    }
-    next();
-});
-
-// O resto da API exige login (a consulta de CEP também é liberada durante o primeiro cadastro)
-app.use("/api", (req, res, next) => {
-    const cepNoCadastro = casaRota(["/cep"], req.path) && !lojaCadastrada();
-    if (casaRota(ROTAS_PUBLICAS, req.path) || cepNoCadastro || estaLogado(req)) {
+// O resto da API exige login; a partir daqui, req.lojaId é a loja logada
+app.use("/api", async (req, res, next) => {
+    if (casaRota(ROTAS_PUBLICAS, req.path) || (await lojaDaSessao(req))) {
         return next();
     }
     return res.status(401).json({ error: "Faça login para continuar." });
@@ -446,10 +301,10 @@ app.use("/api", (req, res, next) => {
 
 /* ================= Páginas ================= */
 
-// Página interna: sem loja ou sem login, volta para a tela de entrada
+// Página interna: sem login, volta para a tela de entrada
 function paginaProtegida(arquivo) {
-    return (req, res) => {
-        if (!lojaCadastrada() || !estaLogado(req)) {
+    return async (req, res) => {
+        if (!(await lojaDaSessao(req))) {
             return res.redirect(302, "/");
         }
         res.sendFile(path.join(PASTA_PAGINAS, arquivo));
@@ -463,13 +318,6 @@ app.get("/metricas", paginaProtegida("metricas.html"));
 
 app.get("/cadastro", (req, res) => {
     res.sendFile(path.join(PASTA_PAGINAS, "cadastro.html"));
-});
-
-// URLs antigas (da época com várias lojas) redirecionam para as novas
-app.get("/dashboard/:loja", (req, res) => res.redirect(302, "/dashboard"));
-app.get("/novo-pedido/:loja", (req, res) => res.redirect(302, "/novo-pedido"));
-app.get("/detalhes-pedido/:loja/:id", (req, res) => {
-    res.redirect(302, `/detalhes-pedido/${encodeURIComponent(req.params.id)}`);
 });
 
 /* ================= API ================= */
@@ -487,7 +335,10 @@ function respostaBloqueio(res, segundos, mensagem) {
 }
 
 app.post("/api/login", async (req, res) => {
-    const espera = segundosBloqueado();
+    const { usr, pwd } = req.body || {};
+    const usuario = typeof usr === "string" ? usr.trim() : "";
+
+    const espera = segundosBloqueado(req.ip, usuario);
     if (espera) {
         return respostaBloqueio(res, espera, `Muitas tentativas erradas. Tente de novo em ${textoEspera(espera)}.`);
     }
@@ -496,39 +347,19 @@ app.post("/api/login", async (req, res) => {
     }
 
     try {
-        const { usr, pwd } = req.body || {};
-        const loja = lerLoja();
-        if (!loja) {
-            return res.status(503).json({ error: "Nenhuma loja cadastrada nesta instalação." });
-        }
-        const usuario = typeof usr === "string" ? usr.trim() : "";
-        const digitos = somenteDigitos(usuario);
-        const usuarioConfere =
-            usuario.length > 0 &&
-            (usuario === loja.login || (digitos.length >= 10 && digitos === somenteDigitos(loja.tel)));
+        const loja = usuario.length <= 100 ? await buscarLojaParaLogin(usuario, somenteDigitos) : null;
+        // Confere a senha mesmo sem loja (contra um hash fictício), para o tempo de resposta
+        // não revelar se o usuário existe
+        const senhaConfere = await verificarSenha(typeof pwd === "string" ? pwd : "", loja ? loja.pwd : hashFicticio);
 
-        // Confere a senha mesmo com usuário errado (contra um hash fictício), para o tempo
-        // de resposta não revelar se o usuário existe
-        const senhaConfere = await verificarSenha(
-            typeof pwd === "string" ? pwd : "",
-            usuarioConfere ? loja.pwd : hashFicticio,
-        );
-
-        if (usuarioConfere && senhaConfere) {
-            // Loja antiga com senha em texto puro: troca por hash no primeiro login
-            if (!isHash(loja.pwd)) {
-                salvarLoja({ ...loja, pwd: await hashSenha(pwd) });
-                console.log("Senha da loja convertida para hash.");
-            }
-            registrarAcertoLogin();
-            criarSessao(res, loja);
-            console.log("Entrada bem sucedida!");
+        if (loja && senhaConfere) {
+            registrarAcertoLogin(req.ip, usuario);
+            await criarSessao(res, loja.id);
             return res.status(200).json({ ok: true });
         }
 
-        registrarErroLogin();
-        console.log("Alguma credencial está errada!");
-        const bloqueio = segundosBloqueado();
+        registrarErroLogin(req.ip, usuario);
+        const bloqueio = segundosBloqueado(req.ip, usuario);
         if (bloqueio) {
             return respostaBloqueio(res, bloqueio, `Usuário ou senha incorretos. Por segurança, aguarde ${textoEspera(bloqueio)} para tentar de novo.`);
         }
@@ -539,18 +370,15 @@ app.post("/api/login", async (req, res) => {
 });
 
 // Sair: encerra a sessão deste navegador
-app.post("/api/logout", (req, res) => {
-    encerrarSessao(req, res);
+app.post("/api/logout", async (req, res) => {
+    await encerrarSessao(req, res);
     res.json({ ok: true });
 });
 
-// A instalação já tem loja cadastrada?
-app.get("/api/cadastro/status", (req, res) => {
-    res.json({ cadastrada: lojaCadastrada() });
-});
-
 // Consulta de CEP (preenche o endereço no formulário de cadastro)
-app.get("/api/cep/:cep", async (req, res) => {
+const limiteCep = limitarPorIp(60, 10 * 60 * 1000, "Muitas consultas de CEP. Aguarde alguns minutos.");
+
+app.get("/api/cep/:cep", limiteCep, async (req, res) => {
     const cep = somenteDigitos(req.params.cep);
     if (cep.length !== 8) {
         return res.status(400).json({ error: "O CEP deve ter 8 dígitos." });
@@ -565,72 +393,61 @@ app.get("/api/cep/:cep", async (req, res) => {
     return res.json(consulta.dados);
 });
 
-// Cadastro da loja (só funciona enquanto não houver loja cadastrada)
-app.post("/api/cadastro", async (req, res) => {
-    if (lojaCadastrada()) {
-        return res.status(409).json({ error: "Já existe uma loja cadastrada nesta instalação." });
-    }
+// Cadastro de uma nova loja (aberto: qualquer loja pode criar a sua conta)
+const limiteCadastro = limitarPorIp(10, 15 * 60 * 1000, "Muitas tentativas de cadastro. Aguarde alguns minutos.");
 
+app.post("/api/cadastro", limiteCadastro, async (req, res) => {
     const { erro, loja } = await validarCadastro(req.body);
     if (erro) {
         return res.status(400).json({ error: erro.mensagem, campo: erro.campo });
     }
 
-    try {
-        // Um loja.json vazio ou inválido não é uma loja: guarda uma cópia (nunca apaga) e libera o cadastro
-        if (fs.existsSync(CAMINHO_LOJA) && !lojaCadastrada()) {
-            const copia = `${CAMINHO_LOJA}.invalido-${Date.now()}`;
-            fs.renameSync(CAMINHO_LOJA, copia);
-            console.warn(`loja.json inválido guardado em ${path.basename(copia)} antes do novo cadastro.`);
-        }
-        // "wx" só cria se o arquivo não existir (evita dois cadastros ao mesmo tempo)
-        fs.writeFileSync(CAMINHO_LOJA, JSON.stringify(loja, null, 4), { encoding: "utf8", flag: "wx" });
-    } catch (error) {
-        if (error.code === "EEXIST") {
-            return res.status(409).json({ error: "Já existe uma loja cadastrada nesta instalação." });
-        }
-        throw error;
+    const resultado = await criarLoja(loja);
+    if (resultado.conflito === "login") {
+        return res.status(409).json({ error: "Este usuário já está em uso. Escolha outro.", campo: "login" });
     }
-    if (!fs.existsSync(CAMINHO_PEDIDOS)) {
-        salvarPedidos([]);
+    if (resultado.conflito === "telefone") {
+        return res.status(409).json({ error: "Já existe uma loja cadastrada com este telefone.", campo: "telefone" });
     }
 
-    console.log(`Loja "${loja.usrName}" cadastrada.`);
-    return res.status(201).json({ loja: lojaPublica(loja) });
+    console.log(`Loja ${resultado.loja.id} cadastrada.`);
+    return res.status(201).json({ loja: lojaPublica(resultado.loja) });
 });
 
-// Dados da loja
-app.get("/api/loja", (req, res) => {
-    const loja = lerLoja();
+// Dados da loja logada
+app.get("/api/loja", async (req, res) => {
+    const loja = await buscarLojaPorId(req.lojaId);
     if (!loja) {
-        return res.status(503).json({ error: "Nenhuma loja cadastrada nesta instalação." });
+        return res.status(401).json({ error: "Faça login para continuar." });
     }
     res.json(lojaPublica(loja));
 });
 
-// Lista de pedidos (antes, aplica os prazos de arquivamento)
-app.get("/api/pedidos", (req, res) => {
-    manutencaoPedidos();
-    res.json(lerPedidos().map((pedido) => comCiclo(pedido, false)));
-});
+// Lista de pedidos (os prazos de arquivamento são aplicados antes)
+app.get("/api/pedidos", (req, res) =>
+    comPedidos(req, res, "Não foi possível carregar os pedidos", (loja) => ({
+        status: 200,
+        corpo: loja.pedidos.map((pedido) => comCiclo(pedido, false)),
+    })),
+);
 
-// Pedidos guardados em finalizados.json (concluídos há mais de 30 dias sem troca nem mudança)
-app.get("/api/pedidos/arquivados", (req, res) => {
-    manutencaoPedidos();
-    res.json(lerArquivados().map((pedido) => comCiclo(pedido, true)));
-});
+// Pedidos finalizados (concluídos há mais de 30 dias sem troca nem mudança)
+app.get("/api/pedidos/arquivados", (req, res) =>
+    comPedidos(req, res, "Não foi possível carregar os pedidos", (loja) => ({
+        status: 200,
+        corpo: loja.arquivados.map((pedido) => comCiclo(pedido, true)),
+    })),
+);
 
-// Um pedido (da lista ou do arquivo)
+// Um pedido (da lista ou dos finalizados)
 app.get("/api/pedidos/:id", (req, res) => {
     const id = lerIdPedido(req, res);
     if (id === null) return;
 
-    const local = localizarPedido(id);
-    if (!local) {
-        return res.status(404).json({ error: "O pedido não foi encontrado." });
-    }
-    const lista = local.arquivado ? local.arquivados : local.pedidos;
-    res.json(comCiclo(lista[local.indice], local.arquivado));
+    return comPedidos(req, res, "Não foi possível carregar o pedido", (loja) => {
+        const pedido = loja.todos.find((item) => item.id === id);
+        return pedido ? { status: 200, corpo: comCiclo(pedido, estaArquivado(pedido)) } : naoEncontrado;
+    });
 });
 
 // Criar pedido
@@ -640,14 +457,14 @@ app.post("/api/pedidos", (req, res) => {
         return res.status(400).json({ error: erro });
     }
 
-    try {
-        const pedidos = lerPedidos();
-        // Ids dos arquivados continuam reservados (o pedido pode voltar para a lista)
-        const novoId = proximoIdPedido([...lerArquivados(), ...pedidos]);
+    return comPedidos(req, res, "Ocorreu um erro ao salvar o pedido", async (loja) => {
+        // Ids dos finalizados continuam reservados (o pedido pode voltar para a lista)
+        const novoId = proximoIdPedido(loja.todos);
         if (novoId === null) {
-            return res.status(409).json({
-                error: `Limite de ${ID_MAXIMO} pedidos atingido. Exclua pedidos antigos para criar novos.`,
-            });
+            return {
+                status: 409,
+                corpo: { error: `Limite de ${ID_MAXIMO} pedidos atingido. Exclua pedidos antigos para criar novos.` },
+            };
         }
         const { data, hora } = momentoAtual();
         const pedidoCriado = { ...pedido, data, hora, id: novoId };
@@ -657,15 +474,12 @@ app.post("/api/pedidos", (req, res) => {
             pedidoCriado.horaConclusao = hora;
         }
 
-        pedidos.push(pedidoCriado);
-        salvarPedidos(pedidos);
-        return res.status(201).json({ pedido: comCiclo(pedidoCriado, false) });
-    } catch (error) {
-        return respostaErroPedidos(res, error, "Ocorreu um erro ao salvar o pedido");
-    }
+        await loja.inserir(pedidoCriado);
+        return { status: 201, corpo: { pedido: comCiclo(pedidoCriado, false) } };
+    });
 });
 
-// Editar pedido (conta como mudança: o prazo de 30 dias recomeça; se estava arquivado, volta para a lista)
+// Editar pedido (conta como mudança: o prazo de 30 dias recomeça; se estava finalizado, volta para a lista)
 app.put("/api/pedidos/:id", (req, res) => {
     const id = lerIdPedido(req, res);
     if (id === null) return;
@@ -675,35 +489,31 @@ app.put("/api/pedidos/:id", (req, res) => {
         return res.status(400).json({ error: erro });
     }
 
-    try {
-        const local = localizarPedido(id);
-        if (!local) {
-            return res.status(404).json({ error: "O pedido não foi encontrado." });
-        }
+    return comPedidos(req, res, "Ocorreu um erro ao salvar o pedido", async (loja) => {
+        const anterior = loja.todos.find((item) => item.id === id);
+        if (!anterior) return naoEncontrado;
 
-        // Mantém id, data, hora e trocas originais
-        const anterior = (local.arquivado ? local.arquivados : local.pedidos)[local.indice];
-        const pedidoAtualizado = { ...anterior, ...pedido, atualizadoEm: new Date().toISOString() };
+        // Mantém id, data, hora e trocas originais; sem arquivadoEm, volta para a lista
+        const { arquivadoEm, ...base } = anterior;
+        const atualizado = { ...base, ...pedido, atualizadoEm: new Date().toISOString() };
 
         // Data de conclusão: grava ao passar para Finalizado/Despachado, mantém entre os dois
         // (Despachado -> Finalizado não muda a data) e apaga se voltar para um status pendente
         if (isStatusConcluido(pedido.status) && !isStatusConcluido(anterior.status)) {
             const { data, hora } = momentoAtual();
-            pedidoAtualizado.dataConclusao = data;
-            pedidoAtualizado.horaConclusao = hora;
+            atualizado.dataConclusao = data;
+            atualizado.horaConclusao = hora;
         } else if (!isStatusConcluido(pedido.status)) {
-            delete pedidoAtualizado.dataConclusao;
-            delete pedidoAtualizado.horaConclusao;
+            delete atualizado.dataConclusao;
+            delete atualizado.horaConclusao;
         }
 
-        const salvo = gravarPedidoAlterado(local, pedidoAtualizado);
-        return res.status(200).json({ pedido: comCiclo(salvo, false), restaurado: local.arquivado });
-    } catch (error) {
-        return respostaErroPedidos(res, error, "Ocorreu um erro ao salvar o pedido");
-    }
+        await loja.salvar(atualizado);
+        return { status: 200, corpo: { pedido: comCiclo(atualizado, false), restaurado: estaArquivado(anterior) } };
+    });
 });
 
-// Registrar troca de peça (o prazo de 30 dias recomeça; se estava arquivado, volta para a lista)
+// Registrar troca de peça (o prazo de 30 dias recomeça; se estava finalizado, volta para a lista)
 app.post("/api/pedidos/:id/trocas", (req, res) => {
     const id = lerIdPedido(req, res);
     if (id === null) return;
@@ -713,47 +523,34 @@ app.post("/api/pedidos/:id/trocas", (req, res) => {
         return res.status(400).json({ error: "Descreva a troca (até 300 caracteres)." });
     }
 
-    try {
-        const local = localizarPedido(id);
-        if (!local) {
-            return res.status(404).json({ error: "O pedido não foi encontrado." });
-        }
-        const anterior = (local.arquivado ? local.arquivados : local.pedidos)[local.indice];
+    return comPedidos(req, res, "Ocorreu um erro ao registrar a troca", async (loja) => {
+        const anterior = loja.todos.find((item) => item.id === id);
+        if (!anterior) return naoEncontrado;
+
         const trocas = Array.isArray(anterior.trocas) ? anterior.trocas : [];
         if (trocas.length >= 50) {
-            return res.status(409).json({ error: "Este pedido já tem o máximo de 50 trocas registradas." });
+            return { status: 409, corpo: { error: "Este pedido já tem o máximo de 50 trocas registradas." } };
         }
         const { data, hora } = momentoAtual();
         const troca = { em: new Date().toISOString(), data, hora, descricao };
 
-        const salvo = gravarPedidoAlterado(local, { ...anterior, trocas: [...trocas, troca] });
-        return res.status(201).json({ pedido: comCiclo(salvo, false), restaurado: local.arquivado });
-    } catch (error) {
-        return respostaErroPedidos(res, error, "Ocorreu um erro ao registrar a troca");
-    }
+        const { arquivadoEm, ...base } = anterior;
+        const atualizado = { ...base, trocas: [...trocas, troca] };
+        await loja.salvar(atualizado);
+        return { status: 201, corpo: { pedido: comCiclo(atualizado, false), restaurado: estaArquivado(anterior) } };
+    });
 });
 
-// Excluir pedido (da lista ou do arquivo)
+// Excluir pedido (da lista ou dos finalizados)
 app.delete("/api/pedidos/:id", (req, res) => {
     const id = lerIdPedido(req, res);
     if (id === null) return;
 
-    try {
-        const local = localizarPedido(id);
-        if (!local) {
-            return res.status(404).json({ error: "O pedido não foi encontrado." });
-        }
-        if (local.arquivado) {
-            local.arquivados.splice(local.indice, 1);
-            salvarArquivados(local.arquivados);
-        } else {
-            local.pedidos.splice(local.indice, 1);
-            salvarPedidos(local.pedidos);
-        }
-        return res.status(200).json({ success: true });
-    } catch (error) {
-        return respostaErroPedidos(res, error, "Ocorreu um erro ao excluir o pedido");
-    }
+    return comPedidos(req, res, "Ocorreu um erro ao excluir o pedido", async (loja) => {
+        if (!loja.todos.some((item) => item.id === id)) return naoEncontrado;
+        await loja.excluir(id);
+        return { status: 200, corpo: { success: true } };
+    });
 });
 
 // Qualquer outra rota da API que não exista
@@ -761,8 +558,8 @@ app.use("/api", (req, res) => {
     res.status(404).json({ error: "Rota não encontrada." });
 });
 
-// Erros inesperados (JSON malformado, corpo grande demais...) sempre em JSON,
-// sem expor stack trace ou caminhos de arquivos
+// Erros inesperados (JSON malformado, corpo grande demais, banco fora do ar...) sempre em JSON,
+// sem expor stack trace nem detalhes internos
 app.use((error, req, res, next) => {
     if (res.headersSent) {
         return next(error);
@@ -773,9 +570,6 @@ app.use((error, req, res, next) => {
     if (error.type === "entity.too.large") {
         return res.status(413).json({ error: "Os dados enviados são grandes demais." });
     }
-    if (error instanceof ErroArquivoPedidos) {
-        return res.status(500).json({ error: mensagemArquivoPedidos(error) });
-    }
     console.error("Erro inesperado:", error);
     return res.status(error.status || 500).json({
         error: "Ocorreu um erro inesperado no servidor.",
@@ -784,46 +578,88 @@ app.use((error, req, res, next) => {
 
 /* ================= Servidor ================= */
 
+function escutar(endereco) {
+    return new Promise((resolve, reject) => {
+        const servidor = http.createServer(app);
+        servidor.once("error", reject);
+        servidor.listen(PORT, endereco, () => resolve(servidor));
+    });
+}
+
 /*
- * Escuta apenas na própria máquina (uso local), nos dois endereços de loopback.
- * No Windows "localhost" costuma resolver primeiro para o IPv6 (::1); escutando
- * só no 127.0.0.1, o navegador poderia cair em outro programa na mesma porta.
+ * Na nuvem, escuta em todos os endereços (o Railway entrega as visitas pela porta PORT).
+ * No computador, só na própria máquina, nos dois endereços de loopback: no Windows "localhost"
+ * costuma resolver primeiro para o IPv6 (::1), e escutando só no 127.0.0.1 o navegador
+ * poderia cair em outro programa na mesma porta.
  */
-const ENDERECOS_LOCAIS = ["127.0.0.1", "::1"];
-let servidoresAtivos = 0;
-
-ENDERECOS_LOCAIS.forEach((endereco) => {
-    const servidor = http.createServer(app);
-
-    servidor.on("error", (error) => {
-        // Máquina sem IPv6: segue só com o 127.0.0.1
-        if (endereco === "::1" && ["EADDRNOTAVAIL", "EAFNOSUPPORT"].includes(error.code)) {
-            return;
-        }
-        if (error.code === "EADDRINUSE") {
-            console.error(
-                `A porta ${PORT} já está em uso. Feche o outro servidor do SellFlow e tente de novo.`,
-            );
-            process.exit(1);
-        }
-        throw error;
-    });
-
-    servidor.listen(PORT, endereco, () => {
-        servidoresAtivos += 1;
-        if (servidoresAtivos === 1) {
-            console.log(`Servidor rodando em http://localhost:${PORT}`);
-        }
-    });
-});
-
-// Confere os prazos de arquivamento ao iniciar e de hora em hora (também roda a cada listagem)
-function manutencaoAgendada() {
+async function abrirServidores() {
+    if (NA_NUVEM) {
+        return [await escutar(undefined)];
+    }
+    const servidores = [await escutar("127.0.0.1")];
     try {
-        manutencaoPedidos();
+        servidores.push(await escutar("::1"));
+    } catch (error) {
+        // Máquina sem IPv6: segue só com o 127.0.0.1
+        if (!["EADDRNOTAVAIL", "EAFNOSUPPORT"].includes(error.code)) throw error;
+    }
+    return servidores;
+}
+
+// Confere os prazos de arquivamento de todas as lojas ao iniciar e de hora em hora
+// (também rodam sempre que uma loja abre os pedidos)
+async function manutencaoAgendada() {
+    try {
+        await manutencaoGeral();
     } catch (error) {
         console.error("Não foi possível verificar os prazos dos pedidos:", error.message);
     }
 }
-manutencaoAgendada();
-setInterval(manutencaoAgendada, 60 * 60 * 1000).unref();
+
+// Banco pronto e hash fictício calculado: a partir daqui o app pode atender (usado também nos testes)
+async function preparar() {
+    const banco = await iniciarBanco();
+    hashFicticio = await hashSenha(crypto.randomBytes(16).toString("hex"));
+    return banco;
+}
+
+async function iniciar() {
+    console.log(`Banco de dados: ${await preparar()}`);
+    await limparSessoesVencidas();
+    await manutencaoAgendada();
+    setInterval(manutencaoAgendada, 60 * 60 * 1000).unref();
+
+    let servidores;
+    try {
+        servidores = await abrirServidores();
+    } catch (error) {
+        if (error.code === "EADDRINUSE") {
+            console.error(`A porta ${PORT} já está em uso. Feche o outro servidor do SellFlow e tente de novo.`);
+            process.exit(1);
+        }
+        throw error;
+    }
+    console.log(NA_NUVEM ? `Servidor rodando na porta ${PORT}` : `Servidor rodando em http://localhost:${PORT}`);
+
+    // Desligamento (deploy novo no Railway ou Ctrl+C): termina as requisições e fecha o banco
+    let desligando = false;
+    const desligar = async () => {
+        if (desligando) return;
+        desligando = true;
+        console.log("Desligando o servidor...");
+        await Promise.all(servidores.map((servidor) => new Promise((resolve) => servidor.close(resolve))));
+        await fecharBanco();
+        process.exit(0);
+    };
+    process.on("SIGTERM", desligar);
+    process.on("SIGINT", desligar);
+}
+
+if (require.main === module) {
+    iniciar().catch((error) => {
+        console.error("Não foi possível iniciar o SellFlow:", error.message);
+        process.exit(1);
+    });
+}
+
+module.exports = { app, preparar, iniciar };
